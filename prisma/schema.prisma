@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("USER") // ADMIN or USER
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wikiDirectories WikiDirectory[]
+  wikiArticles    WikiArticle[]
+  posts           Post[]
+  boardPermissions BoardPermission[]
+}
+
+model Board {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  posts            Post[]
+  boardPermissions BoardPermission[]
+}
+
+model BoardPermission {
+  id      String @id @default(uuid())
+  boardId String
+  userId  String
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, userId])
+}
+
+model WikiDirectory {
+  id        String   @id @default(uuid())
+  userId    String
+  parentId  String?
+  name      String
+  slug      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent        WikiDirectory? @relation("DirectoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children      WikiDirectory[] @relation("DirectoryTree")
+  wikiArticles  WikiArticle[]
+
+  @@unique([userId, parentId, slug])
+}
+
+model WikiArticle {
+  id          String   @id @default(uuid())
+  userId      String
+  directoryId String?
+  title       String
+  content     String   @default("")
+  slug        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  directory WikiDirectory? @relation(fields: [directoryId], references: [id], onDelete: SetNull)
+  posts     Post[]
+
+  @@unique([userId, directoryId, slug])
+}
+
+model Post {
+  id         String   @id @default(uuid())
+  boardId    String
+  userId     String
+  title      String
+  content    String   @default("")
+  sourceType String   // DIRECTORY or ARTICLE
+  sourceId   String
+  syncEnabled Boolean @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  board       Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceArticle WikiArticle? @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+}

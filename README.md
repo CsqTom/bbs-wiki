@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+需求：做一个论坛+wiki的平台
+1 管理员：创建论坛版块、增删人员，配置人员可以查看论坛，而公开版块游客也可以看）
+2 wiki 每个人员都有一个私有Wiki空间（支持目录到Markdown文章）
+3 可以将wiki的的整个目录或是单个文章以贴子的方式分享到某个版块（如果该文章有更新，采用能同步过去）
+4 可以使用ai问答，问答权限版块中的问题（作为以后的扩展功能）
 
-## Getting Started
+按上面的需给，给出初步的技术方案，技术选型为next.js
 
-First, run the development server:
+当前数据库使用 postgresql16 连接相关信息为：
+'USER': 'postgres',
+'PASSWORD': 'xxx',
+'HOST': 'localhost',
+'PORT': '5432',
+需要按自己的数据库配置更改.env文件中的数据库连接信息。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+工程管理工具: pnpm
+
+运行方式
 ```
+  pnpm dev              # 开发模式
+  pnpm build            # 生产构建
+  pnpm db:seed          # 初始化数据（管理员账号）
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+  默认管理员账号：admin@bbs-wiki.com / admin123
+  数据库：PostgreSQL localhost:56433，数据库名 bbs_wiki
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+  图像存储：用户头像存在 public/uploads/avatars/{userId}/，Wiki图片存在 public/uploads/wiki/{userId}/。
+```
