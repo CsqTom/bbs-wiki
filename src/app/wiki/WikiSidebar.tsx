@@ -3,64 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-
-interface WikiArticle {
-  id: string;
-  title: string;
-  slug: string;
-  directoryId: string | null;
-}
-
-interface WikiDirectory {
-  id: string;
-  name: string;
-  slug: string;
-  parentId: string | null;
-  wikiArticles: WikiArticle[];
-}
-
-interface DirectoryNode extends WikiDirectory {
-  href: string;
-  children: DirectoryNode[];
-  articleLinks: Array<WikiArticle & { href: string }>;
-}
-
-function buildDirectoryTree(
-  directories: WikiDirectory[],
-  parentId: string | null = null,
-  parentSegments: string[] = [],
-): DirectoryNode[] {
-  return directories
-    .filter((directory) => directory.parentId === parentId)
-    .map((directory) => {
-      const pathSegments = [...parentSegments, directory.slug];
-      const href = `/wiki/${pathSegments.join("/")}`;
-
-      return {
-        ...directory,
-        href,
-        children: buildDirectoryTree(directories, directory.id, pathSegments),
-        articleLinks: directory.wikiArticles.map((article) => ({
-          ...article,
-          href: `${href}/${article.slug}`,
-        })),
-      };
-    });
-}
-
-function flattenDirectoryOptions(
-  nodes: DirectoryNode[],
-  depth = 0,
-): Array<{ id: string; label: string; href: string }> {
-  return nodes.flatMap((node) => [
-    {
-      id: node.id,
-      label: `${"  ".repeat(depth)}${node.name}`,
-      href: node.href,
-    },
-    ...flattenDirectoryOptions(node.children, depth + 1),
-  ]);
-}
+import {
+  buildDirectoryTree,
+  flattenDirectoryOptions,
+  type DirectoryNode,
+  type WikiTreeArticle,
+  type WikiTreeDirectory,
+} from "./wiki-tree";
 
 function TreeNode({
   node,
@@ -69,13 +18,15 @@ function TreeNode({
   onToggle,
   onDeleteDirectory,
   onDeleteArticle,
+  deletingKey,
 }: {
   node: DirectoryNode;
   pathname: string;
   expandedIds: Set<string>;
   onToggle: (id: string) => void;
   onDeleteDirectory: (node: DirectoryNode) => void;
-  onDeleteArticle: (article: WikiArticle & { href: string }) => void;
+  onDeleteArticle: (article: WikiTreeArticle & { href: string }) => void;
+  deletingKey: string | null;
 }) {
   const isExpanded = expandedIds.has(node.id);
   const isDirectoryActive = pathname === node.href;
@@ -95,7 +46,10 @@ function TreeNode({
         >
           {isExpanded ? "▾" : "▸"}
         </button>
-        <Link href={node.href} className="min-w-0 flex-1 truncate text-sm font-medium">
+        <Link
+          href={node.href}
+          className="min-w-0 flex-1 truncate text-sm font-medium"
+        >
           {node.name}
         </Link>
         <button
@@ -125,10 +79,11 @@ function TreeNode({
                 </Link>
                 <button
                   type="button"
+                  disabled={deletingKey === `article:${article.id}`}
                   onClick={() => onDeleteArticle(article)}
-                  className="rounded px-2 py-1 text-xs text-red-500 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+                  className="rounded px-2 py-1 text-xs text-red-500 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50"
                 >
-                  删
+                  {deletingKey === `article:${article.id}` ? "..." : "删"}
                 </button>
               </div>
             );
@@ -143,6 +98,7 @@ function TreeNode({
               onToggle={onToggle}
               onDeleteDirectory={onDeleteDirectory}
               onDeleteArticle={onDeleteArticle}
+              deletingKey={deletingKey}
             />
           ))}
         </div>
@@ -155,8 +111,8 @@ export function WikiSidebar({
   directories,
   rootArticles,
 }: {
-  directories: WikiDirectory[];
-  rootArticles: WikiArticle[];
+  directories: WikiTreeDirectory[];
+  rootArticles: WikiTreeArticle[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -172,6 +128,25 @@ export function WikiSidebar({
   const [expandedIds, setExpandedIds] = useState(
     () => new Set(directories.map((directory) => directory.id)),
   );
+
+  const activeDirectoryId = useMemo(() => {
+    if (!pathname || pathname === "/wiki") return "";
+    
+    const exactMatch = directoryOptions.find((opt) => opt.href === pathname);
+    if (exactMatch) return exactMatch.id;
+    
+    let deepestDirId = "";
+    let maxLen = 0;
+    for (const opt of directoryOptions) {
+      if (pathname.startsWith(opt.href + "/")) {
+        if (opt.href.length > maxLen) {
+          maxLen = opt.href.length;
+          deepestDirId = opt.id;
+        }
+      }
+    }
+    return deepestDirId;
+  }, [pathname, directoryOptions]);
 
   function toggleDirectory(id: string) {
     setExpandedIds((prev) => {
@@ -200,12 +175,18 @@ export function WikiSidebar({
     });
     if (!res.ok) return;
 
-    const created = (await res.json()) as { id: string; slug: string; parentId: string | null };
+    const created = (await res.json()) as {
+      id: string;
+      slug: string;
+      parentId: string | null;
+    };
     const parentHref = created.parentId
       ? directoryHrefMap.get(created.parentId) ?? "/wiki"
       : "/wiki";
     const nextHref =
-      parentHref === "/wiki" ? `/wiki/${created.slug}` : `${parentHref}/${created.slug}`;
+      parentHref === "/wiki"
+        ? `/wiki/${created.slug}`
+        : `${parentHref}/${created.slug}`;
 
     setExpandedIds((prev) => new Set(prev).add(created.id));
     setShowCreateDir(false);
@@ -249,8 +230,8 @@ export function WikiSidebar({
   ) {
     const confirmed = window.confirm(
       type === "directory"
-        ? `Delete "${label}"? This will also delete nested directories and articles.`
-        : `Delete "${label}"?`,
+        ? `确定删除 "${label}"？这将会连同内部的子目录和文章一起删除。`
+        : `确定删除 "${label}"？`,
     );
     if (!confirmed) return;
 
@@ -266,13 +247,14 @@ export function WikiSidebar({
         const data = (await res.json().catch(() => null)) as
           | { error?: string }
           | null;
-        window.alert(data?.error ?? "Delete failed");
+        window.alert(data?.error ?? "删除失败");
         return;
       }
 
       if (
         href &&
-        (pathname === href || (type === "directory" && pathname.startsWith(`${href}/`)))
+        (pathname === href ||
+          (type === "directory" && pathname.startsWith(`${href}/`)))
       ) {
         router.push("/wiki");
       }
@@ -304,6 +286,17 @@ export function WikiSidebar({
           >
             新建文章
           </button>
+          <button
+            type="button"
+            onClick={() => router.push("/wiki/shares")}
+            className={`rounded-lg px-3 py-1.5 text-sm text-white ${
+              pathname === "/wiki/shares"
+                ? "bg-violet-700 hover:bg-violet-800"
+                : "bg-violet-600 hover:bg-violet-700"
+            }`}
+          >
+            分享管理
+          </button>
         </div>
       </div>
 
@@ -313,15 +306,16 @@ export function WikiSidebar({
             <form onSubmit={handleCreateDirectory} className="space-y-2">
               <input
                 name="name"
-                placeholder="Directory name"
+                placeholder="目录名称"
                 required
                 className="w-full rounded-lg border px-3 py-2 text-sm"
               />
               <select
                 name="parentId"
+                defaultValue={activeDirectoryId}
                 className="w-full rounded-lg border px-3 py-2 text-sm"
               >
-                <option value="">Root level</option>
+                <option value="">根目录</option>
                 {directoryOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
@@ -332,7 +326,7 @@ export function WikiSidebar({
                 type="submit"
                 className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white"
               >
-                Create
+                创建
               </button>
             </form>
           )}
@@ -341,15 +335,16 @@ export function WikiSidebar({
             <form onSubmit={handleCreateArticle} className="space-y-2">
               <input
                 name="title"
-                placeholder="Article title"
+                placeholder="文章标题"
                 required
                 className="w-full rounded-lg border px-3 py-2 text-sm"
               />
               <select
                 name="directoryId"
+                defaultValue={activeDirectoryId}
                 className="w-full rounded-lg border px-3 py-2 text-sm"
               >
-                <option value="">No directory (root level)</option>
+                <option value="">无目录 (根目录)</option>
                 {directoryOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
@@ -360,7 +355,7 @@ export function WikiSidebar({
                 type="submit"
                 className="rounded-lg bg-green-600 px-3 py-1.5 text-sm text-white"
               >
-                Create
+                创建
               </button>
             </form>
           )}
@@ -417,6 +412,7 @@ export function WikiSidebar({
                 onDeleteArticle={(article) =>
                   handleDelete("article", article.id, article.title, article.href)
                 }
+                deletingKey={deletingKey}
               />
             ))}
           </div>
@@ -424,7 +420,7 @@ export function WikiSidebar({
 
         {tree.length === 0 && rootArticles.length === 0 && (
           <p className="py-8 text-center text-sm text-gray-500">
-            Your wiki is empty. Create a directory or article to get started.
+            你的 wiki 为空。创建一个目录或文章来开始。
           </p>
         )}
       </div>

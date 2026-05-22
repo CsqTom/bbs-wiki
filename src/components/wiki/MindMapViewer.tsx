@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface MindMapViewerProps {
   content: string;
   onSyncMarkdown?: (markdown: string) => void;
+  readOnly?: boolean;
 }
 
 interface MarkmapInstance {
@@ -476,6 +477,7 @@ function findNearestHeadingLevel(
 export function MindMapViewer({
   content,
   onSyncMarkdown,
+  readOnly = false,
 }: MindMapViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -786,11 +788,11 @@ export function MindMapViewer({
           svgRef.current,
           {
             mode: "editable",
-            editable: true,
-            addable: true,
-            deletable: true,
-            hoverBorder: true,
-            clickBorder: true,
+            editable: !readOnly,
+            addable: !readOnly,
+            deletable: !readOnly,
+            hoverBorder: !readOnly,
+            clickBorder: !readOnly,
             duration: 300,
             initialExpandLevel: -1,
             zoom: true,
@@ -829,7 +831,14 @@ export function MindMapViewer({
         mmRef.current = null;
       }
     };
-  }, [content, cancelPendingFit, isFullscreen, scheduleFit, syncSvgViewportSize]);
+  }, [
+    content,
+    cancelPendingFit,
+    isFullscreen,
+    readOnly,
+    scheduleFit,
+    syncSvgViewportSize,
+  ]);
 
   useEffect(() => {
     if (!viewportRef.current || typeof ResizeObserver === "undefined") return;
@@ -848,7 +857,7 @@ export function MindMapViewer({
   }, [isFullscreen, scheduleFit, syncSvgViewportSize]);
 
   useEffect(() => {
-    if (!containerRef.current || !onSyncMarkdown) return;
+    if (!containerRef.current || !onSyncMarkdown || readOnly) return;
 
     function scheduleMarkdownSyncFromCommit() {
       if (suppressAutoSyncRef.current) return;
@@ -891,10 +900,10 @@ export function MindMapViewer({
       rootElement.removeEventListener("keydown", handleKeydown, true);
       rootElement.removeEventListener("focusout", handleFocusOut, true);
     };
-  }, [onSyncMarkdown, syncCurrentMindMapToMarkdown]);
+  }, [onSyncMarkdown, readOnly, syncCurrentMindMapToMarkdown]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || readOnly) return;
 
     function handleCodeNodeDoubleClick(event: MouseEvent) {
       const target = event.target;
@@ -951,7 +960,7 @@ export function MindMapViewer({
     return () => {
       rootElement.removeEventListener("dblclick", handleCodeNodeDoubleClick, true);
     };
-  }, []);
+  }, [readOnly]);
 
   useEffect(() => {
     if (!codeEditorState || !codeEditorRef.current) return;
@@ -1071,7 +1080,7 @@ export function MindMapViewer({
       >
         <svg ref={svgRef} className="block h-full w-full min-h-0 flex-1" />
       </div>
-      {codeEditorState && (
+      {!readOnly && codeEditorState && (
         <div
           data-mm-code-editor="true"
           className="absolute z-20 overflow-hidden rounded-xl border border-slate-700 bg-slate-950 shadow-2xl"

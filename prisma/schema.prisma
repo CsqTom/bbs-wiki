@@ -19,6 +19,7 @@ model User {
 
   wikiDirectories WikiDirectory[]
   wikiArticles    WikiArticle[]
+  wikiShareLinks  WikiShareLink[]
   posts           Post[]
   boardPermissions BoardPermission[]
 }
@@ -76,8 +77,39 @@ model WikiArticle {
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   directory WikiDirectory? @relation(fields: [directoryId], references: [id], onDelete: SetNull)
   posts     Post[]
+  shareItems WikiShareItem[]
 
   @@unique([userId, directoryId, slug])
+}
+
+model WikiShareLink {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  title     String?
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items WikiShareItem[]
+
+  @@index([userId])
+}
+
+model WikiShareItem {
+  id          String   @id @default(uuid())
+  shareLinkId String
+  articleId   String
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  shareLink WikiShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  article   WikiArticle   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([shareLinkId, articleId])
+  @@index([articleId])
+  @@index([shareLinkId, sortOrder])
 }
 
 model Post {

@@ -85,23 +85,8 @@ export function WikiArticleEditor({
     }
   }
 
-  async function handleShareToBoard() {
-    const boardId = prompt("Enter Board ID to share to:");
-    if (!boardId) return;
-
-    await fetch("/api/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        boardId,
-        title: article.title,
-        content,
-        sourceType: "ARTICLE",
-        sourceId: article.id,
-      }),
-    });
-    alert("Shared successfully!");
-    router.refresh();
+  function handleOpenShareManager() {
+    router.push(`/wiki/shares?articleId=${article.id}`);
   }
 
   return (
@@ -135,10 +120,10 @@ export function WikiArticleEditor({
             Mind Map
           </button>
           <button
-            onClick={handleShareToBoard}
-            className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700"
+            onClick={handleOpenShareManager}
+            className="rounded bg-violet-600 px-3 py-1.5 text-sm text-white hover:bg-violet-700"
           >
-            Share to Board
+            去分享管理
           </button>
           <button
             onClick={() => setContent(savedContent)}
