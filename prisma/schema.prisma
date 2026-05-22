@@ -21,6 +21,7 @@ model User {
   wikiArticles    WikiArticle[]
   wikiShareLinks  WikiShareLink[]
   posts           Post[]
+  comments        Comment[]
   boardPermissions BoardPermission[]
 }
 
@@ -118,8 +119,8 @@ model Post {
   userId     String
   title      String
   content    String   @default("")
-  sourceType String   // DIRECTORY or ARTICLE
-  sourceId   String
+  sourceType String?  // DIRECTORY or ARTICLE (optional for normal posts)
+  sourceId   String?
   syncEnabled Boolean @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -127,4 +128,17 @@ model Post {
   board       Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   sourceArticle WikiArticle? @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

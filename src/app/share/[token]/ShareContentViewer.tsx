@@ -27,51 +27,66 @@ function formatDate(value: string) {
 }
 
 export function ShareContentViewer({
+  title,
+  ownerName,
+  articleCount,
+  expiresLabel,
   articles,
+  compact = false,
 }: {
+  title: string;
+  ownerName: string;
+  articleCount: number;
+  expiresLabel: string;
   articles: ShareArticle[];
+  compact?: boolean;
 }) {
   const [viewerMode, setViewerMode] = useState<ViewerMode>("preview");
   const [localModes, setLocalModes] = useState<Record<string, ViewerMode>>({});
 
   return (
-    <div className="mt-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
-        <div>
-          <p className="text-sm font-medium text-gray-900">统一内容展示方式</p>
-          <p className="mt-1 text-xs text-gray-500">
-            切换所有文章的默认视图（单篇文章也可独立调整）。
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setViewerMode("preview");
-              setLocalModes({});
-            }}
-            className={`rounded px-3 py-1.5 text-sm transition ${
-              viewerMode === "preview" && Object.keys(localModes).length === 0
-                ? "bg-blue-700 text-white"
-                : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-            }`}
-          >
-            统一 Markdown
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setViewerMode("mindmap");
-              setLocalModes({});
-            }}
-            className={`rounded px-3 py-1.5 text-sm transition ${
-              viewerMode === "mindmap" && Object.keys(localModes).length === 0
-                ? "bg-blue-700 text-white"
-                : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-            }`}
-          >
-            统一思维导图
-          </button>
+    <div className={compact ? "space-y-6" : "mt-6 space-y-6"}>
+      <div className={`bg-white  border border-gray-200 p-8 shadow-sm ${compact ? "rounded-2xl" : "rounded-3xl"}`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+              <span>分享者：{ownerName}</span>
+              <span>文章数：{articleCount}</span>
+              <span>{expiresLabel}</span>
+            </div>
+          </div>
+          {articleCount > 1 && (
+            <div className="flex gap-2 rounded-xl border border-gray-200 bg-gray-50 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewerMode("preview");
+                  setLocalModes({});
+                }}
+                className={`rounded-lg px-3 py-1.5 text-sm transition ${
+                  viewerMode === "preview" && Object.keys(localModes).length === 0
+                    ? "bg-blue-700 text-white"
+                    : "text-blue-700 hover:bg-blue-100"
+                }`}
+              >
+                统一 Markdown
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewerMode("mindmap");
+                  setLocalModes({});
+                }}
+                className={`rounded-lg px-3 py-1.5 text-sm transition ${
+                  viewerMode === "mindmap" && Object.keys(localModes).length === 0
+                    ? "bg-blue-700 text-white"
+                    : "text-blue-700 hover:bg-blue-100"
+                }`}
+              >
+                统一思维导图
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -82,22 +97,16 @@ export function ShareContentViewer({
         <article
           key={article.id}
           id={`article-${article.id}`}
-          className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm"
+          className={`overflow-hidden bg-white ${compact ? "rounded-2xl border border-gray-200 shadow-sm" : "rounded-3xl border border-gray-200 shadow-sm"}`}
         >
-          <header className="border-b border-gray-200 bg-gray-50 px-8 py-6">
+          <header className={`border-b border-gray-200 bg-gray-50 ${compact ? "px-4 py-4" : "px-8 py-6"}`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-gray-400">
-                  Article {index + 1}
+                  Article {index + 1} 最近更新：{formatDate(article.updatedAt)}
                 </p>
-                <h2 className="mt-2 text-2xl font-semibold text-gray-900">
-                  {article.title}
-                </h2>
               </div>
               <div className="flex flex-col items-end gap-3">
-                <p className="text-xs text-gray-500">
-                  最近更新：{formatDate(article.updatedAt)}
-                </p>
                 <div className="flex gap-1 rounded-md border border-gray-200 bg-white p-1 shadow-sm">
                   <button
                     type="button"
@@ -126,7 +135,7 @@ export function ShareContentViewer({
             </div>
           </header>
 
-          <div className="px-8 py-8">
+          <div className={compact ? "px-2 py-2" : "px-2 py-2"}>
             {currentMode === "preview" ? (
               <div className="markdown-preview-panel min-h-[320px] overflow-auto rounded-xl border border-gray-200 bg-white p-6">
                 <div className="wmde-markdown-var" />

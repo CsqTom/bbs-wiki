@@ -62,7 +62,6 @@ export default async function SharePage({
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center px-6 py-16">
         <div className="w-full rounded-3xl border border-amber-200 bg-white p-8 shadow-sm">
-          <p className="text-sm font-medium text-amber-700">Wiki 分享</p>
           <h1 className="mt-3 text-3xl font-semibold text-gray-900">
             该分享链接已过期
           </h1>
@@ -85,24 +84,8 @@ export default async function SharePage({
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
-        <p className="text-sm font-medium text-blue-600">Wiki 分享</p>
-        <h1 className="mt-3 text-3xl font-semibold text-gray-900">
-          {shareLink.title ?? "未命名分享"}
-        </h1>
-        <div className="mt-4 flex flex-wrap gap-3 text-sm text-gray-500">
-          <span>分享者：{shareLink.user.name}</span>
-          <span>文章数：{shareLink.items.length}</span>
-          <span>
-            {shareLink.expiresAt
-              ? `过期时间：${formatDate(shareLink.expiresAt)}`
-              : "过期时间：永久有效"}
-          </span>
-        </div>
-      </div>
-
       {shareLink.items.length > 1 && (
-        <nav className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <nav className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-gray-900">目录</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {shareLink.items.map(({ article }) => (
@@ -119,6 +102,14 @@ export default async function SharePage({
       )}
 
       <ShareContentViewer
+        title={shareLink.title ?? "未命名分享"}
+        ownerName={shareLink.user.name}
+        articleCount={shareLink.items.length}
+        expiresLabel={
+          shareLink.expiresAt
+            ? `过期时间：${formatDate(shareLink.expiresAt)}`
+            : "过期时间：永久有效"
+        }
         articles={shareLink.items.map(({ article }) => ({
           id: article.id,
           title: article.title,

@@ -1,89 +1,49 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth-utils";
 
 export default async function BoardsPage() {
   const user = await getCurrentUser();
 
-  const publicBoards = await prisma.board.findMany({
+  const firstPublicBoard = await prisma.board.findFirst({
     where: { isPublic: true },
     orderBy: { createdAt: "desc" },
   });
 
-  let privateBoards: typeof publicBoards = [];
+  if (firstPublicBoard) {
+    redirect(`/boards/${firstPublicBoard.id}`);
+  }
+
   if (user) {
-    privateBoards = await prisma.board.findMany({
+    const firstPrivateBoard = await prisma.board.findFirst({
       where: {
         isPublic: false,
         boardPermissions: { some: { userId: user.id } },
       },
       orderBy: { createdAt: "desc" },
     });
-  }
 
-  // If admin, show all boards
-  let allBoards: typeof publicBoards = [];
-  if (user?.role === "ADMIN") {
-    const permittedBoards = await prisma.board.findMany({
-      where: { isPublic: false },
-      orderBy: { createdAt: "desc" },
-    });
-    allBoards = permittedBoards.filter(
-      (b) => !privateBoards.find((pb) => pb.id === b.id),
-    );
+    if (firstPrivateBoard) {
+      redirect(`/boards/${firstPrivateBoard.id}`);
+    }
+    
+    if (user.role === "ADMIN") {
+      const firstAdminBoard = await prisma.board.findFirst({
+        where: { isPublic: false },
+        orderBy: { createdAt: "desc" },
+      });
+      if (firstAdminBoard) {
+        redirect(`/boards/${firstAdminBoard.id}`);
+      }
+    }
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Boards</h1>
-
-      <div className="space-y-6">
-        <section>
-          <h2 className="text-lg font-semibold mb-3">Public Boards</h2>
-          {publicBoards.length === 0 ? (
-            <p className="text-gray-500">No public boards.</p>
-          ) : (
-            <div className="grid gap-3">
-              {publicBoards.map((board) => (
-                <Link
-                  key={board.id}
-                  href={`/boards/${board.id}`}
-                  className="block p-4 bg-white rounded-lg shadow hover:shadow-md"
-                >
-                  <h3 className="font-medium">{board.name}</h3>
-                  {board.description && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      {board.description}
-                    </p>
-                  )}
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {user && privateBoards.length > 0 && (
-          <section>
-            <h2 className="text-lg font-semibold mb-3">
-              My Private Boards
-            </h2>
-            <div className="grid gap-3">
-              {privateBoards.map((board) => (
-                <Link
-                  key={board.id}
-                  href={`/boards/${board.id}`}
-                  className="block p-4 bg-white rounded-lg shadow hover:shadow-md"
-                >
-                  <h3 className="font-medium">{board.name}</h3>
-                  {board.description && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      {board.description}
-                    </p>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </section>
+    <div className="flex h-full items-center justify-center p-8">
+      <div className="text-center text-gray-500">
+        <p className="text-lg">暂无可用版块</p>
+        {user?.role === "ADMIN" && (
+          <p className="mt-2 text-sm">请前往管理后台创建版块</p>
         )}
       </div>
     </div>
