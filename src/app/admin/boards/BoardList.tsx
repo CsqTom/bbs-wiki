@@ -8,18 +8,36 @@ interface Board {
   name: string;
   description: string | null;
   isPublic: boolean;
-  boardPermissions: {
-    id: string;
-    userId: string;
-    role: string;
-    user: { id: string; name: string; email: string };
-  }[];
+  boardPermissions: BoardPermission[];
 }
 
 interface User {
   id: string;
   name: string;
   email: string;
+}
+
+interface BoardPermission {
+  id: string;
+  userId: string;
+  role: string;
+  user: { id: string; name: string; email: string };
+}
+
+interface ApiErrorResponse {
+  error?: string;
+}
+
+function isBoardPermission(
+  data: BoardPermission | ApiErrorResponse | null,
+): data is BoardPermission {
+  return Boolean(
+    data &&
+      "id" in data &&
+      "userId" in data &&
+      "role" in data &&
+      "user" in data,
+  );
 }
 
 export function BoardList({
@@ -151,17 +169,14 @@ export function BoardList({
     });
 
     const data = (await res.json().catch(() => null)) as
-      | {
-          id: string;
-          userId: string;
-          role: string;
-          user: { id: string; name: string; email: string };
-        }
-      | { error?: string }
+      | BoardPermission
+      | ApiErrorResponse
       | null;
 
-    if (!res.ok || !data || "error" in data) {
-      alert(data?.error ?? "添加成员失败");
+    if (!res.ok || !isBoardPermission(data)) {
+      const errorMessage =
+        data && "error" in data ? data.error ?? "添加成员失败" : "添加成员失败";
+      alert(errorMessage);
       return;
     }
 

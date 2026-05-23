@@ -44,6 +44,16 @@ type PreviewPayload =
       }>;
     };
 
+interface PreviewErrorResponse {
+  error?: string;
+}
+
+function isPreviewPayload(
+  data: PreviewPayload | PreviewErrorResponse | null,
+): data is PreviewPayload {
+  return Boolean(data && "kind" in data);
+}
+
 interface PostDetailClientProps {
   post: {
     id: string;
@@ -158,11 +168,13 @@ export function PostDetailClient({
       );
       const data = (await res.json().catch(() => null)) as
         | PreviewPayload
-        | { error?: string }
+        | PreviewErrorResponse
         | null;
 
-      if (!res.ok || !data || "error" in data) {
-        throw new Error(data?.error ?? "预览加载失败");
+      if (!res.ok || !isPreviewPayload(data)) {
+        const errorMessage =
+          data && "error" in data ? data.error ?? "预览加载失败" : "预览加载失败";
+        throw new Error(errorMessage);
       }
 
       setEditingWikiPreview(data);

@@ -5,12 +5,20 @@ ENV PATH="$PNPM_HOME:$PATH"
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN corepack enable
+RUN corepack prepare pnpm@10.29.2 --activate
 
 WORKDIR /app
 
 FROM base AS deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN printf '%s\n' \
+  'only-built-dependencies[]=@prisma/engines' \
+  'only-built-dependencies[]=esbuild' \
+  'only-built-dependencies[]=prisma' \
+  'only-built-dependencies[]=sharp' \
+  'only-built-dependencies[]=unrs-resolver' \
+  > .npmrc
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
