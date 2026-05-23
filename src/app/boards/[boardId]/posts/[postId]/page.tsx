@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth-utils";
+import { getCurrentUser, checkModeratorPermission } from "@/lib/auth-utils";
 import Link from "next/link";
 import { PostDetailClient } from "./PostDetailClient";
 import { extractFirstForumResourceHref } from "@/lib/forum-resource";
@@ -65,6 +65,17 @@ export default async function PostDetailPage({
   });
 
   if (!post) notFound();
+
+  // 计算用户权限
+  let canDeletePost = false;
+  let canEditPost = false;
+  let isModerator = false;
+
+  if (user) {
+    canEditPost = user.id === post.userId;
+    isModerator = user.role === "ADMIN" || await checkModeratorPermission(user.id, boardId);
+    canDeletePost = isModerator;
+  }
 
   const autoWikiPath =
     wikiAuto === "off" ? null : extractFirstForumResourceHref(post.content);
@@ -151,6 +162,10 @@ export default async function PostDetailPage({
         wikiPath={resolvedWikiPath}
         wikiPreviewContent={wikiPreviewContent}
         currentUser={user}
+        boardId={boardId}
+        canDeletePost={canDeletePost}
+        canEditPost={canEditPost}
+        isModerator={isModerator}
       />
     </div>
   );

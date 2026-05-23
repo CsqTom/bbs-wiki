@@ -28,3 +28,44 @@ export async function requireAuth() {
   }
   return user;
 }
+
+export async function checkModeratorPermission(userId: string, boardId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return false;
+
+  if (user.role === "ADMIN") return true;
+
+  const permission = await prisma.boardPermission.findUnique({
+    where: { boardId_userId: { boardId, userId } },
+  });
+
+  return permission?.role === "MODERATOR";
+}
+
+export async function canDeletePost(userId: string, post: { boardId: string; userId: string }) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return false;
+
+  if (user.role === "ADMIN") return true;
+
+  const isModerator = await checkModeratorPermission(userId, post.boardId);
+  if (isModerator) return true;
+
+  return false;
+}
+
+export async function canEditPost(userId: string, post: { userId: string }) {
+  return userId === post.userId;
+}
+
+export async function canDeleteComment(userId: string, comment: { postId: string; userId: string }, postBoardId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return false;
+
+  if (user.role === "ADMIN") return true;
+
+  const isModerator = await checkModeratorPermission(userId, postBoardId);
+  if (isModerator) return true;
+
+  return userId === comment.userId;
+}

@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ForumEditor } from "@/components/forum/ForumEditor";
 
-export function CreatePostClient({ boardId }: { boardId: string }) {
+export function CreatePostClient({
+  boardId,
+  triggerClassName = "",
+}: {
+  boardId: string;
+  triggerClassName?: string;
+}) {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [title, setTitle] = useState("");
@@ -42,7 +48,7 @@ export function CreatePostClient({ boardId }: { boardId: string }) {
     return (
       <button
         onClick={() => setIsCreating(true)}
-        className="mb-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+        className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium ${triggerClassName}`}
       >
         + 发布新帖
       </button>
@@ -50,7 +56,7 @@ export function CreatePostClient({ boardId }: { boardId: string }) {
   }
 
   return (
-    <div className="mb-8 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+    <div className="mt-4 mb-8 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-bold">发布新帖</h2>
         <button

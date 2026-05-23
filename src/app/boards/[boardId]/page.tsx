@@ -56,14 +56,20 @@ export default async function BoardPage({
 
   return (
     <div className="flex h-full flex-col p-6 overflow-y-auto">
-      <div className="mb-6 border-b border-gray-200 pb-4">
-        <h1 className="text-2xl font-bold mb-2">{board.name}</h1>
-        {board.description && (
-          <p className="text-gray-600">{board.description}</p>
+      <div className="mb-6 border-b border-gray-200 pb-4 relative">
+        <div className="pr-36">
+          <h1 className="text-2xl font-bold mb-2">{board.name}</h1>
+          {board.description && (
+            <p className="text-gray-600">{board.description}</p>
+          )}
+        </div>
+        {user && (
+          <CreatePostClient
+            boardId={board.id}
+            triggerClassName="absolute right-0 top-0"
+          />
         )}
       </div>
-
-      {user && <CreatePostClient boardId={board.id} />}
 
       <div className="space-y-4 flex-1">
         {posts.map((post) => {

@@ -12,7 +12,7 @@ export default async function HomePage() {
       <h1 className="text-3xl font-bold mb-6">Welcome to BBS-Wiki</h1>
 
       <section>
-        <h2 className="text-xl font-semibold mb-4">Public Boards</h2>
+        <h2 className="text-xl font-semibold mb-4">Public Boards/公开版块</h2>
         {publicBoards.length === 0 ? (
           <p className="text-gray-500">No public boards yet.</p>
         ) : (

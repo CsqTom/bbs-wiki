@@ -18,7 +18,7 @@ export default async function AdminBoardsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Board Management</h1>
+      <h1 className="text-2xl font-bold mb-4">版块管理</h1>
       <BoardList boards={boards} allUsers={users} />
     </div>
   );

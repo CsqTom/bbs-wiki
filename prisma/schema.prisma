@@ -41,6 +41,7 @@ model BoardPermission {
   id      String @id @default(uuid())
   boardId String
   userId  String
+  role    String @default("MEMBER") // MEMBER or MODERATOR
 
   board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)

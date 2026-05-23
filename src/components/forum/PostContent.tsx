@@ -7,9 +7,10 @@ import { normalizeForumResourceHref } from "@/lib/forum-resource";
 
 interface PostContentProps {
   content: string;
+  onForumResourceOpen?: (href: string) => void;
 }
 
-export function PostContent({ content }: PostContentProps) {
+export function PostContent({ content, onForumResourceOpen }: PostContentProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -22,6 +23,11 @@ export function PostContent({ content }: PostContentProps) {
       if (normalizedHref) {
         e.preventDefault();
 
+        if (onForumResourceOpen) {
+          onForumResourceOpen(normalizedHref);
+          return;
+        }
+
         // 更新 URL 参数但不刷新页面，保持滚动条位置
         const params = new URLSearchParams(searchParams.toString());
         params.set("wikiPath", normalizedHref);
@@ -30,7 +36,7 @@ export function PostContent({ content }: PostContentProps) {
         router.push(`${pathname}?${params.toString()}`, { scroll: false });
       }
     },
-    [router, pathname, searchParams],
+    [onForumResourceOpen, router, pathname, searchParams],
   );
 
   return (

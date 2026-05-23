@@ -50,7 +50,7 @@ export function ForumSidebar({ publicBoards, privateBoards }: ForumSidebarProps)
         {privateBoards.length > 0 && (
           <div>
             <h3 className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              我的私密版块
+              内部版块
             </h3>
             <div className="space-y-1">
               {privateBoards.map((board) => {

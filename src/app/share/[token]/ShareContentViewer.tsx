@@ -33,6 +33,7 @@ export function ShareContentViewer({
   expiresLabel,
   articles,
   compact = false,
+  defaultMode = "preview",
 }: {
   title: string;
   ownerName: string;
@@ -40,8 +41,9 @@ export function ShareContentViewer({
   expiresLabel: string;
   articles: ShareArticle[];
   compact?: boolean;
+  defaultMode?: ViewerMode;
 }) {
-  const [viewerMode, setViewerMode] = useState<ViewerMode>("preview");
+  const [viewerMode, setViewerMode] = useState<ViewerMode>(defaultMode);
   const [localModes, setLocalModes] = useState<Record<string, ViewerMode>>({});
 
   return (
@@ -50,7 +52,7 @@ export function ShareContentViewer({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-              <span>分享者：{ownerName}</span>
+              <span>wiki分享者：{ownerName}</span>
               <span>文章数：{articleCount}</span>
               <span>{expiresLabel}</span>
             </div>

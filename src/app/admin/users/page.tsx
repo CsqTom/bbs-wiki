@@ -13,7 +13,7 @@ export default async function AdminUsersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">User Management</h1>
+      <h1 className="text-2xl font-bold mb-4">用户管理</h1>
       <UserList users={users} />
     </div>
   );

@@ -105,10 +105,6 @@ export function WikiArticleEditor({
     }
   }
 
-  function handleOpenShareManager() {
-    router.push(`/wiki/shares?articleId=${article.id}`);
-  }
-
   function insertText(text: string) {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -175,32 +171,6 @@ export function WikiArticleEditor({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setRightPanelMode("preview")}
-            className={`px-3 py-1.5 rounded text-sm transition ${
-              rightPanelMode === "preview"
-                ? "bg-blue-700 text-white"
-                : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-            }`}
-          >
-            Preview
-          </button>
-          <button
-            onClick={() => setRightPanelMode("mindmap")}
-            className={`px-3 py-1.5 rounded text-sm transition ${
-              rightPanelMode === "mindmap"
-                ? "bg-blue-700 text-white"
-                : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-            }`}
-          >
-            Mind Map
-          </button>
-          <button
-            onClick={handleOpenShareManager}
-            className="rounded bg-violet-600 px-3 py-1.5 text-sm text-white hover:bg-violet-700"
-          >
-            去分享管理
-          </button>
           <button
             onClick={() => setContent(savedContent)}
             disabled={!hasUnsavedChanges || saving}

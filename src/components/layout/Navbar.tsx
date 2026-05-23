@@ -13,28 +13,29 @@ export async function Navbar() {
           <Link href="/" className="text-xl font-bold text-blue-600">
             BBS-Wiki
           </Link>
-          <Link
-            href="/boards"
-            className="text-sm text-gray-600 hover:text-gray-900"
-          >
-            Boards
-          </Link>
           {user && (
             <Link
               href="/wiki"
               className="text-sm text-gray-600 hover:text-gray-900"
             >
-              My Wiki
+              我的 Wiki
             </Link>
           )}
+          <Link
+            href="/boards"
+            className="text-sm text-gray-600 hover:text-gray-900"
+          >
+            论坛版块
+          </Link>
           {user?.role === "ADMIN" && (
             <Link
               href="/admin"
               className="text-sm text-gray-600 hover:text-gray-900"
             >
-              Admin
+              管理后台
             </Link>
           )}
+          
         </div>
 
         <div className="flex items-center gap-4">

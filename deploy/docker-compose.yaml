@@ -1,0 +1,18 @@
+services:
+  bbs-wiki:
+    container_name: ${CONTAINER_NAME:-bbs-wiki}
+    image: ${IMAGE_NAME:-bbs-wiki}:${IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${PORT:-50030}:50030"
+    environment:
+      NODE_ENV: production
+      PORT: 50030
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: ${DATABASE_URL}
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-}

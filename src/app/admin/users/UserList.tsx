@@ -28,7 +28,7 @@ export function UserList({ users: initialUsers }: { users: User[] }) {
   }
 
   async function handleDelete(userId: string) {
-    if (!confirm("Delete this user?")) return;
+    if (!confirm("确定要删除这个用户吗？")) return;
     await fetch(`/api/users/${userId}`, { method: "DELETE" });
     setUsers(users.filter((u) => u.id !== userId));
     router.refresh();
@@ -39,11 +39,11 @@ export function UserList({ users: initialUsers }: { users: User[] }) {
       <table className="w-full">
         <thead>
           <tr className="border-b">
-            <th className="text-left px-4 py-3">Name</th>
-            <th className="text-left px-4 py-3">Email</th>
-            <th className="text-left px-4 py-3">Role</th>
-            <th className="text-left px-4 py-3">Joined</th>
-            <th className="text-left px-4 py-3">Actions</th>
+            <th className="text-left px-4 py-3">姓名</th>
+            <th className="text-left px-4 py-3">邮箱</th>
+            <th className="text-left px-4 py-3">角色</th>
+            <th className="text-left px-4 py-3">注册时间</th>
+            <th className="text-left px-4 py-3">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -57,8 +57,8 @@ export function UserList({ users: initialUsers }: { users: User[] }) {
                   onChange={(e) => handleRoleChange(u.id, e.target.value)}
                   className="border rounded px-2 py-1 text-sm"
                 >
-                  <option value="USER">User</option>
-                  <option value="ADMIN">Admin</option>
+                  <option value="USER">普通用户</option>
+                  <option value="ADMIN">管理员</option>
                 </select>
               </td>
               <td className="px-4 py-3 text-sm text-gray-600">
@@ -69,7 +69,7 @@ export function UserList({ users: initialUsers }: { users: User[] }) {
                   onClick={() => handleDelete(u.id)}
                   className="text-red-600 hover:text-red-800 text-sm"
                 >
-                  Delete
+                  删除
                 </button>
               </td>
             </tr>
