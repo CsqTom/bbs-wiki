@@ -1,10 +1,8 @@
 services:
   bbs-wiki:
     container_name: ${CONTAINER_NAME:-bbs-wiki}
-    image: ${IMAGE_NAME:-bbs-wiki}:${IMAGE_TAG:-latest}
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
+    image: ${REGISTRY_HOST:-}${IMAGE_NAME:-bbs-wiki}:${IMAGE_TAG:-latest}
+    pull_policy: always
     restart: unless-stopped
     ports:
       - "${PORT:-50030}:50030"

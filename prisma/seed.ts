@@ -14,7 +14,10 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: "admin@bbs-wiki.com" },
-    update: {},
+    update: {
+      name: "Admin",
+      role: "ADMIN",
+    },
     create: {
       name: "Admin",
       email: "admin@bbs-wiki.com",
@@ -25,13 +28,20 @@ async function main() {
 
   console.log(`Admin user created: ${admin.email} (password: admin123)`);
 
-  const board = await prisma.board.create({
-    data: {
-      name: "General Discussion",
-      description: "A public board for general topics",
-      isPublic: true,
-    },
+  const existingBoard = await prisma.board.findFirst({
+    where: { name: "General Discussion" },
+    select: { id: true, name: true },
   });
+
+  const board =
+    existingBoard ??
+    (await prisma.board.create({
+      data: {
+        name: "General Discussion",
+        description: "A public board for general topics",
+        isPublic: true,
+      },
+    }));
 
   console.log(`Public board created: ${board.name}`);
 }

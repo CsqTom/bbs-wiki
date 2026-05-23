@@ -4,6 +4,7 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NEXT_TELEMETRY_DISABLED=1
 
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 RUN corepack prepare pnpm@10.29.2 --activate
 
@@ -22,6 +23,9 @@ RUN printf '%s\n' \
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
+
+ARG DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/bbs_wiki?schema=public
+ENV DATABASE_URL=$DATABASE_URL
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -49,4 +53,4 @@ COPY --from=builder /app/.next ./.next
 
 EXPOSE 50030
 
-CMD ["pnpm", "start"]
+CMD ["sh", "-c", "pnpm prisma db push && pnpm db:seed && pnpm start"]

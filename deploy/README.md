@@ -58,6 +58,9 @@ CONTAINER_NAME=bbs-wiki
 - `AUTH_SECRET`：建议填写，NextAuth 使用
 - `NEXTAUTH_URL`：建议按实际访问地址填写
 - `IMAGE_NAME`、`IMAGE_TAG`：用于 compose 和推送脚本复用
+- 容器启动时会自动执行 `pnpm prisma db push`，用于自动创建/同步表结构
+- 容器启动时会自动执行 `pnpm db:seed`，用于初始化默认管理员
+- 该方案不会自动创建数据库本身，`DATABASE_URL` 中的数据库名必须已存在
 
 ## 方式一：直接打包 Docker 镜像
 
@@ -71,6 +74,8 @@ docker build -f deploy/Dockerfile -t bbs-wiki:latest .
 
 ```bash
 docker build -f deploy/Dockerfile -t bbs-wiki:v1.0.0 .
+或
+docker build --no-cache -f deploy/Dockerfile -t bbs-wiki:v2026.5.23 .
 ```
 
 打包完成后，可通过以下命令查看镜像：
@@ -79,7 +84,7 @@ docker build -f deploy/Dockerfile -t bbs-wiki:v1.0.0 .
 docker images | grep bbs-wiki
 ```
 
-## 方式二：使用 docker compose 构建并启动
+## 方式二：使用 docker compose 拉取并启动
 
 先进入部署目录：
 
@@ -87,10 +92,11 @@ docker images | grep bbs-wiki
 cd deploy
 ```
 
-构建并启动：
+拉取并启动：
 
 ```bash
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 查看运行状态：
@@ -105,16 +111,27 @@ docker compose ps
 docker compose logs -f
 ```
 
+说明：
+
+- 当前为方案 A：保留外部 PostgreSQL
+- 容器启动时会先执行 `prisma db push`、`db:seed`，再启动 Next.js
+- 如果数据库 `bbs_wiki` 不存在，容器仍会启动失败，需要先手工创建数据库
+- 默认管理员会自动初始化：
+  - 邮箱：`admin@bbs-wiki.com`
+  - 密码：`admin123`
+  - 角色：`ADMIN`
+- 默认管理员和默认公共版块已做成可重复执行，不会因重启容器而重复创建
+
 停止容器：
 
 ```bash
 docker compose down
 ```
 
-如果只想重新构建镜像：
+如果只想重新拉取最新镜像：
 
 ```bash
-docker compose build
+docker compose pull
 ```
 
 ## 推送到私有仓库
@@ -183,7 +200,8 @@ docker build -f deploy/Dockerfile -t bbs-wiki:latest .
 
 ```bash
 cd deploy
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 部署目录推送私有仓：
