@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ShareContentViewer } from "./ShareContentViewer";
+import { ShareContentViewer } from "../ShareContentViewer";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -13,7 +13,7 @@ function formatDate(date: Date) {
 export default async function SharePage({
   params,
 }: {
-  params: Promise<{ token: string }>;
+  params: Promise<{ token: string; slug?: string[] }>;
 }) {
   const { token } = await params;
 

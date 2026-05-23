@@ -17,6 +17,33 @@ export function normalizeForumResourceHref(rawHref: string) {
   return null;
 }
 
+/**
+ * Extract a human-readable title from a wiki or share link URL.
+ * For /share/<token>/<title> URLs, converts the slug to a readable title.
+ * Returns null if no title can be extracted.
+ */
+export function guessTitleFromForumHref(href: string): string | null {
+  if (!href) return null;
+
+  let pathname = href;
+  try {
+    pathname = new URL(href).pathname;
+  } catch {
+    // href is already a relative path
+  }
+
+  // Match /share/<token>/<title> pattern
+  const shareMatch = pathname.match(/^\/share\/[^/]+\/(.+)$/);
+  if (shareMatch) {
+    const slug = shareMatch[1];
+    return slug
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  return null;
+}
+
 export function extractFirstForumResourceHref(content: string) {
   const markdownLinkRegex = /\[[^\]]*?\]\((.*?)\)/g;
 

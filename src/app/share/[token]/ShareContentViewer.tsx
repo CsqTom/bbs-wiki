@@ -143,6 +143,14 @@ export function ShareContentViewer({
                   source={article.content || "*当前文章暂无内容*"}
                   remarkPlugins={[remarkGfm]}
                   wrapperElement={{ "data-color-mode": "light" }}
+                  components={{
+                    a: ({ node: _node, ...props }) => (
+                      <a {...props} target="_blank" rel="noopener noreferrer" />
+                    ),
+                    img: ({ node: _node, ...props }) => (
+                      <img {...props} referrerPolicy="no-referrer" />
+                    ),
+                  }}
                 />
               </div>
             ) : (

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { slugify } from "@/lib/slugify";
 
 function buildShareTitle(articleTitles: string[]) {
   if (articleTitles.length === 1) {
@@ -8,6 +9,11 @@ function buildShareTitle(articleTitles: string[]) {
   }
 
   return `${articleTitles[0]} 等 ${articleTitles.length} 篇文章`;
+}
+
+function buildShareUrl(origin: string, token: string, title: string | null) {
+  if (!title) return `${origin}/share/${token}`;
+  return `${origin}/share/${token}/${slugify(title)}`;
 }
 
 export async function POST(request: Request) {
@@ -99,7 +105,8 @@ export async function POST(request: Request) {
     },
   });
 
-  const shareUrl = `${new URL(request.url).origin}/share/${shareLink.token}`;
+  const origin = new URL(request.url).origin;
+  const shareUrl = buildShareUrl(origin, shareLink.token, shareLink.title);
 
   return NextResponse.json({
     id: shareLink.id,
@@ -149,7 +156,7 @@ export async function GET(request: Request) {
       createdAt: shareLink.createdAt.toISOString(),
       articleCount: shareLink.items.length,
       articleTitles: shareLink.items.map((item) => item.article.title),
-      shareUrl: `${origin}/share/${shareLink.token}`,
+      shareUrl: buildShareUrl(origin, shareLink.token, shareLink.title),
     })),
   });
 }

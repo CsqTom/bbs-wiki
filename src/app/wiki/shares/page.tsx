@@ -1,7 +1,13 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { slugify } from "@/lib/slugify";
 import { ShareManager } from "../ShareManager";
+
+function buildShareUrl(token: string, title: string | null) {
+  if (!title) return `/share/${token}`;
+  return `/share/${token}/${slugify(title)}`;
+}
 
 export default async function WikiSharesPage({
   searchParams,
@@ -80,7 +86,7 @@ export default async function WikiSharesPage({
         createdAt: shareLink.createdAt.toISOString(),
         articleCount: shareLink.items.length,
         articleTitles: shareLink.items.map((item) => item.article.title),
-        shareUrl: `/share/${shareLink.token}`,
+        shareUrl: buildShareUrl(shareLink.token, shareLink.title),
       }))}
       initialSelectedArticleIds={initialSelectedArticleIds}
     />

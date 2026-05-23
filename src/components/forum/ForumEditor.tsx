@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { guessTitleFromForumHref } from "@/lib/forum-resource";
 
 interface ForumEditorProps {
   initialContent?: string;
@@ -77,7 +78,8 @@ export function ForumEditor({
     );
     if (link) {
       const normalizedLink = link.trim();
-      const title = prompt("请输入链接显示文字:", "Wiki 参考");
+      const guessedTitle = guessTitleFromForumHref(normalizedLink) || "wiki参考";
+      const title = prompt("请输入链接显示文字:", guessedTitle);
       insertText(`[${title || normalizedLink}](${normalizedLink})`);
     }
   };

@@ -159,7 +159,14 @@ export function PostDetailClient({
             <div>
               <h2 className="text-2xl font-bold mb-6 pr-8">{wikiPreviewContent.title}</h2>
               <div className="prose max-w-none" data-color-mode="light">
-                <MarkdownPreview source={wikiPreviewContent.content} />
+                <MarkdownPreview source={wikiPreviewContent.content} components={{
+                  a: ({ node: _node, ...props }) => (
+                    <a {...props} target="_blank" rel="noopener noreferrer" />
+                  ),
+                  img: ({ node: _node, ...props }) => (
+                    <img {...props} referrerPolicy="no-referrer" />
+                  ),
+                }} />
               </div>
             </div>
           )

@@ -1,97 +1,97 @@
 # CLAUDE.md
 
-This file provides repository guidance for Claude Code and other coding agents.
+本文件为 Claude Code 及其他编码代理提供仓库使用指南。
 
-## Project Snapshot
+## 项目概览
 
-This repository is an already running BBS + Wiki platform built with Next.js App Router.
+该仓库是一个基于 Next.js App Router 构建的、已在运行的 BBS + Wiki 平台。
 
-- Users have private wiki spaces with directory trees and Markdown articles.
-- Public / permission-controlled boards are used for forum discussions.
-- Wiki articles can be published as board posts and can also be turned into public share links.
-- The current wiki editing experience is a left sidebar + right workspace layout, with Markdown editor, preview, and mind map collaboration.
+- 用户拥有私有的 wiki 空间，包含目录树和 Markdown 文章。
+- 使用公共或权限控制的版块（Board）进行论坛讨论。
+- Wiki 文章可以发布为论坛帖子，也可以生成公开分享链接。
+- 当前的 wiki 编辑体验为左侧边栏 + 右侧工作区的布局，支持 Markdown 编辑器、预览和思维导图协作。
 
-## Tech Stack
+## 技术栈
 
-- **Framework:** Next.js 16 App Router
-- **Language:** TypeScript
-- **Auth:** NextAuth v5 beta
-- **Database:** PostgreSQL 16 via Prisma + `@prisma/adapter-pg`
-- **UI:** Tailwind CSS 4
-- **Markdown Preview:** `@uiw/react-markdown-preview`
-- **Markdown Parsing:** `react-markdown`, `remark-gfm`
-- **Mind Map:** `markmap-plus`
-- **Package Manager:** `pnpm`
+- **框架：** Next.js 16 App Router
+- **语言：** TypeScript
+- **认证：** NextAuth v5 beta
+- **数据库：** PostgreSQL 16，通过 Prisma + `@prisma/adapter-pg`
+- **UI：** Tailwind CSS 4
+- **Markdown 预览：** `@uiw/react-markdown-preview`
+- **Markdown 解析：** `react-markdown`、`remark-gfm`
+- **思维导图：** `markmap-plus`
+- **包管理器：** `pnpm`
 
-## Current Domain Models
+## 当前领域模型
 
-- **User**: normal user / admin, owns wiki directories, wiki articles, share links, and posts
-- **Board**: forum board, can be public or permission controlled
-- **BoardPermission**: user-to-board visibility binding
-- **WikiDirectory**: user-private directory tree
-- **WikiArticle**: Markdown article under root or a directory
-- **WikiShareLink**: public share entry with token and optional expiration time
-- **WikiShareItem**: ordered article collection under a share link, used for single-article or multi-article sharing
-- **Post**: forum post entry, currently can be created from a wiki article
+- **User**：普通用户/管理员，拥有 wiki 目录、wiki 文章、分享链接和帖子
+- **Board**：论坛版块，可设为公开或权限控制
+- **BoardPermission**：用户与版块间的可见性绑定
+- **WikiDirectory**：用户私有的目录树
+- **WikiArticle**：根目录或子目录下的 Markdown 文章
+- **WikiShareLink**：公开分享条目，包含 token 和可选过期时间
+- **WikiShareItem**：分享链接下的有序文章集合，用于单篇或多篇文章分享
+- **Post**：论坛帖子，当前可从 wiki 文章创建
 
-## Route Map
+## 路由地图
 
-- `/` - homepage, shows public boards
-- `/boards` - board list
-- `/boards/[boardId]` - board detail and post list
-- `/wiki` - current user's wiki workspace landing page
-- `/wiki/[...path]` - directory page or article editor page
-- `/share/[token]` - public wiki share page, validates expiration time
-- `/admin` - admin dashboard
-- `/admin/boards` - board management
-- `/admin/users` - user management
-- `/admin/wiki` - wiki admin page placeholder
+- `/` - 首页，展示公开版块
+- `/boards` - 版块列表
+- `/boards/[boardId]` - 版块详情及帖子列表
+- `/wiki` - 当前用户的 wiki 工作区首页
+- `/wiki/[...path]` - 目录页或文章编辑页
+- `/share/[token]` - 公开的 wiki 分享页，校验过期时间
+- `/admin` - 管理后台
+- `/admin/boards` - 版块管理
+- `/admin/users` - 用户管理
+- `/admin/wiki` - Wiki 管理页（占位）
 
-## Wiki Architecture
+## Wiki 架构
 
-### Workspace Layout
+### 工作区布局
 
-- The wiki area uses a fixed two-pane workspace.
-- Left side is the directory tree / article operation area.
-- Right side is the content workspace.
-- Article editing page uses split panes: Markdown editor on the left, preview or mind map on the right.
+- Wiki 区域采用固定双栏工作区。
+- 左侧为目录树/文章操作区。
+- 右侧为内容工作区。
+- 文章编辑页使用分栏布局：左侧为 Markdown 编辑器，右侧为预览或思维导图。
 
-### Editing and Sync Rules
+### 编辑与同步规则
 
-- Markdown article is the source of truth.
-- Mind map updates sync back to Markdown through explicit submit-style interactions.
-- Existing mind map node edits use segment replacement instead of full-document rewrite.
-- New nodes are inserted according to parent / sibling context and derived heading level.
-- Code nodes use a dedicated multiline overlay editor and keep raw fenced block structure.
+- Markdown 文章是唯一数据源。
+- 思维导图更新通过明确的提交式交互同步回 Markdown。
+- 对现有思维导图节点的编辑采用段替换方式，而非全文档重写。
+- 新节点根据父级/兄弟级上下文及推导出的标题级别插入。
+- 代码节点使用专用的多行叠加编辑器，保持原始围栏代码块结构。
 
-### Share Link Rules
+### 分享链接规则
 
-- A share link can contain one or many wiki articles.
-- Share links use public tokens instead of exposing internal article IDs.
-- Share links support optional expiration time.
-- Shared pages render the latest article content, so wiki remains the source of truth.
-- Forum posts should reuse share links instead of duplicating a separate public rendering model.
+- 一个分享链接可包含一篇或多篇 wiki 文章。
+- 分享链接使用公开 token，而非暴露内部文章 ID。
+- 分享链接支持可选过期时间。
+- 分享页渲染最新的文章内容，wiki 始终保持为数据源。
+- 论坛帖子应复用分享链接，而非复制一套独立的公开渲染模型。
 
-## Data Access Conventions
+## 数据访问约定
 
-- Prefer Server Components for data reading.
-- Use Route Handlers or Server Actions for mutations.
-- Keep database access on the server side only.
-- Reuse `@/lib/prisma` instead of creating ad hoc Prisma clients.
-- Reuse `@/lib/auth-utils` for auth checks.
+- 优先使用 Server Component 进行数据读取。
+- 使用 Route Handler 或 Server Action 进行数据变更。
+- 数据库访问仅限服务端。
+- 复用 `@/lib/prisma`，而非创建临时的 Prisma 客户端。
+- 复用 `@/lib/auth-utils` 进行认证检查。
 
-## Implementation Notes
+## 实现说明
 
-- `src/app/wiki/layout.tsx` owns the wiki shell layout and sidebar data loading.
-- `src/app/wiki/WikiSidebar.tsx` handles directory tree interactions, creation, deletion, and multi-article sharing.
-- `src/app/wiki/WikiArticleEditor.tsx` handles article editing, preview, mind map, and current-article sharing.
-- `src/components/wiki/MindMapViewer.tsx` contains mind map visualization and Markdown sync logic.
-- `src/app/api/wiki` contains wiki CRUD APIs.
-- `src/app/api/wiki/shares/route.ts` creates public share links.
+- `src/app/wiki/layout.tsx` 负责 wiki 外壳布局和侧边栏数据加载。
+- `src/app/wiki/WikiSidebar.tsx` 处理目录树交互、创建、删除及多文章分享。
+- `src/app/wiki/WikiArticleEditor.tsx` 处理文章编辑、预览、思维导图及当前文章分享。
+- `src/components/wiki/MindMapViewer.tsx` 包含思维导图可视化和 Markdown 同步逻辑。
+- `src/app/api/wiki` 包含 wiki CRUD API。
+- `src/app/api/wiki/shares/route.ts` 创建公开分享链接。
 
-## Near-Term Product Direction
+## 近期产品方向
 
-- Forum posts need to support inserting wiki share links.
-- When a post opens a wiki link, forum stays on the left and wiki content appears on the right.
-- After closing the wiki link, the right wiki panel should collapse and the forum area remains primary.
-- AI Q&A is still a future capability and not part of the current implementation scope.
+- 论坛帖子需要支持插入 wiki 分享链接。
+- 当帖子打开 wiki 链接时，论坛保持在左侧，wiki 内容显示在右侧。
+- 关闭 wiki 链接后，右侧 wiki 面板收起，论坛区域保持为主视图。
+- AI Q&A 仍是未来能力，不在当前实现范围内。

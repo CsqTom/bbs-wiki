@@ -98,6 +98,40 @@ function sanitizeParagraphText(value: string) {
   );
 }
 
+/** Convert markdown images/links in paragraph text to img/a tags, sanitize the rest. */
+function renderParagraphHtml(text: string) {
+  const pattern = /(?:!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]*)\]\(([^\s)]+)(?:\s+"([^"]*)")?\))/g;
+  let result = "";
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(pattern)) {
+    result += sanitizeParagraphText(text.slice(lastIndex, match.index));
+
+    if (match[1] !== undefined) {
+      // Image: ![alt](url)
+      const src = escapeHtml(match[2]);
+      const alt = escapeHtml(match[1]);
+      result += `<img src="${src}" alt="${alt}" style="max-width:100%;max-height:100px;cursor:pointer;display:block;border-radius:4px;margin:4px 0;" referrerPolicy="no-referrer" class="mm-image-node" />`;
+    } else {
+      // Link: [text](url "title")
+      const linkText = escapeHtml(match[3]);
+      const url = escapeHtml(match[4]);
+      const title = match[5] ? escapeHtml(match[5]) : "";
+      const titleAttr = title ? ` title="${title}"` : "";
+      result += `<a href="${url}" target="_blank" rel="noopener noreferrer"${titleAttr} style="color:#2563eb;text-decoration:underline;cursor:pointer;" class="mm-link-node">${linkText}</a>`;
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex === 0) {
+    return sanitizeParagraphText(text);
+  }
+
+  result += sanitizeParagraphText(text.slice(lastIndex));
+  return result;
+}
+
 function formatCodeLine(value: string) {
   return escapeHtml(value)
     .replace(/\t/g, "    ")
@@ -303,7 +337,7 @@ function buildSyncContext(md: string): SyncContext {
   function flushParagraph(endIndex: number) {
     if (paragraphBuffer.length === 0 || paragraphStart < 0) return;
     const mergedParagraph = paragraphBuffer.join(" ").replace(/\s+/g, " ").trim();
-    const displayContent = sanitizeParagraphText(mergedParagraph);
+    const displayContent = renderParagraphHtml(mergedParagraph);
     const childLevel = Math.min(currentLevel + 1, 6);
     const prefix = "#".repeat(childLevel);
     const id = nextId();
@@ -492,6 +526,7 @@ export function MindMapViewer({
   const lastSyncedMarkdownRef = useRef<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const prevFullscreenRef = useRef(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const cancelPendingFit = useCallback(() => {
     if (fitFrameRef.current !== null) {
@@ -963,6 +998,43 @@ export function MindMapViewer({
   }, [readOnly]);
 
   useEffect(() => {
+    if (!containerRef.current) return;
+
+    function handleImageDoubleClick(event: MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      const imgElement = target.closest(".mm-image-node");
+      if (!(imgElement instanceof HTMLImageElement)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      setLightboxUrl(imgElement.src);
+    }
+
+    function handleLinkClick(event: MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      const linkElement = target.closest(".mm-link-node");
+      if (!(linkElement instanceof HTMLAnchorElement)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      window.open(linkElement.href, "_blank", "noopener,noreferrer");
+    }
+
+    const rootElement = containerRef.current;
+    rootElement.addEventListener("dblclick", handleImageDoubleClick, true);
+    rootElement.addEventListener("click", handleLinkClick, true);
+
+    return () => {
+      rootElement.removeEventListener("dblclick", handleImageDoubleClick, true);
+      rootElement.removeEventListener("click", handleLinkClick, true);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!codeEditorState || !codeEditorRef.current) return;
 
     if (lastOpenedCodeEditorSegmentRef.current === codeEditorState.segmentId) {
@@ -1128,6 +1200,29 @@ export function MindMapViewer({
             spellCheck={false}
             className="h-[calc(100%-41px)] w-full resize-none overflow-auto whitespace-pre border-0 bg-slate-950 px-4 py-3 font-mono text-sm leading-6 text-slate-100 focus:outline-none"
           />
+        </div>
+      )}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="relative max-h-[90vh] max-w-[90vw]">
+            <img
+              src={lightboxUrl}
+              alt=""
+              className="max-h-[85vh] max-w-[85vw] rounded-xl shadow-2xl"
+              referrerPolicy="no-referrer"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              type="button"
+              onClick={() => setLightboxUrl(null)}
+              className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-700 shadow-md hover:bg-gray-100"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
     </div>

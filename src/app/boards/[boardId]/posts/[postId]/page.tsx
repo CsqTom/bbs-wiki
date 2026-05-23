@@ -95,7 +95,7 @@ export default async function PostDetailPage({
       }
     }
   } else if (resolvedWikiPath && resolvedWikiPath.startsWith("/share/")) {
-    const token = resolvedWikiPath.replace("/share/", "").split("?")[0];
+    const token = resolvedWikiPath.replace("/share/", "").split("/")[0].split("?")[0];
     const shareLink = await prisma.wikiShareLink.findUnique({
       where: { token },
       include: {

@@ -397,7 +397,7 @@ export function ShareManager({
         </div>
 
         <div className="border-t border-gray-200 px-5 py-3 text-xs text-gray-500">
-          分享页面入口：`/share/[token]`
+          分享页面入口：`/share/[token]`（添加标题参数：`/share/[token]/title`）
           <Link href="/wiki" className="ml-3 text-blue-600 hover:underline">
             返回 Wiki 工作台
           </Link>

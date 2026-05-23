@@ -29,8 +29,12 @@ export function WikiArticleEditor({
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const mindMapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [content, setContent] = useState(article.content);
   const [savedContent, setSavedContent] = useState(article.content);
+  const [mindMapContent, setMindMapContent] = useState(article.content);
   const [saving, setSaving] = useState(false);
   const [rightPanelMode, setRightPanelMode] =
     useState<RightPanelMode>("preview");
@@ -70,6 +74,22 @@ export function WikiArticleEditor({
     };
   }, [isDragging]);
 
+  // 思维导图渲染开销大，用户输入时延迟更新，避免每输入一个字符都重建思维导图。
+  useEffect(() => {
+    if (mindMapTimerRef.current) {
+      clearTimeout(mindMapTimerRef.current);
+    }
+    mindMapTimerRef.current = setTimeout(() => {
+      setMindMapContent(content);
+      mindMapTimerRef.current = null;
+    }, 1000);
+    return () => {
+      if (mindMapTimerRef.current) {
+        clearTimeout(mindMapTimerRef.current);
+      }
+    };
+  }, [content]);
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -87,6 +107,62 @@ export function WikiArticleEditor({
 
   function handleOpenShareManager() {
     router.push(`/wiki/shares?articleId=${article.id}`);
+  }
+
+  function insertText(text: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newContent =
+      content.substring(0, start) + text + content.substring(end);
+    setContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      const cursorPos = start + text.length;
+      textarea.setSelectionRange(cursorPos, cursorPos);
+    }, 0);
+  }
+
+  async function handleUploadLocalImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", "wiki");
+
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (res.ok) {
+        const { url } = await res.json();
+        insertText(`![图片](${url})`);
+      } else {
+        alert("上传图片失败");
+      }
+    } catch {
+      alert("上传图片失败");
+    } finally {
+      // Reset so the same file can be re-selected
+      e.target.value = "";
+    }
+  }
+
+  function handleWebImage() {
+    const url = prompt("请输入网络图片URL:", "https://");
+    if (url && url.trim()) {
+      insertText(`![图片](${url.trim()})`);
+    }
+  }
+
+  function handleWebLink() {
+    const url = prompt("请输入链接URL:", "https://");
+    if (!url || !url.trim()) return;
+    const text = prompt("请输入链接显示文字:", "链接");
+    if (!text || !text.trim()) return;
+    insertText(`[${text.trim()}](${url.trim()})`);
   }
 
   return (
@@ -162,17 +238,49 @@ export function WikiArticleEditor({
           style={{ width: `${editorWidth}%` }}
         >
           <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">
-                Markdown Editor
-              </h2>
-              <p className="text-xs text-gray-500">支持实时联动预览和思维导图</p>
+            <div className="flex items-center gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">
+                  Markdown Editor
+                </h2>
+                <p className="text-xs text-gray-500">支持实时联动预览和思维导图</p>
+              </div>
+              <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
+                <label className="flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-200">
+                  <span className="text-sm leading-none">🖼</span>
+                  本地图片
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleUploadLocalImage}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleWebImage}
+                  className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-200"
+                >
+                  <span className="text-sm leading-none">🌐</span>
+                  网络图片
+                </button>
+                <button
+                  type="button"
+                  onClick={handleWebLink}
+                  className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-200"
+                >
+                  <span className="text-sm leading-none">🔗</span>
+                  网页链接
+                </button>
+              </div>
             </div>
             <span className="text-xs text-gray-500">
               {content.length} chars
             </span>
           </div>
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="min-h-0 flex-1 resize-none border-0 bg-slate-950 px-4 py-4 font-mono text-sm leading-6 text-slate-100 focus:outline-none"
@@ -236,6 +344,14 @@ export function WikiArticleEditor({
                   }
                   remarkPlugins={[remarkGfm]}
                   wrapperElement={{ "data-color-mode": "light" }}
+                  components={{
+                    a: ({ node: _node, ...props }) => (
+                      <a {...props} target="_blank" rel="noopener noreferrer" />
+                    ),
+                    img: ({ node: _node, ...props }) => (
+                      <img {...props} referrerPolicy="no-referrer" />
+                    ),
+                  }}
                 />
               </div>
             ) : (
@@ -250,7 +366,7 @@ export function WikiArticleEditor({
               >
                 <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white">
                   <MindMapViewer
-                    content={content || "# No content yet"}
+                    content={mindMapContent || "# No content yet"}
                     onSyncMarkdown={(markdown) => setContent(markdown)}
                   />
                 </div>

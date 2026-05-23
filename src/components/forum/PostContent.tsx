@@ -47,6 +47,8 @@ export function PostContent({ content }: PostContentProps) {
               <a
                 {...props}
                 onClick={(e) => handleLinkClick(e, href)}
+                target={isForumResourceLink ? undefined : "_blank"}
+                rel={isForumResourceLink ? undefined : "noopener noreferrer"}
                 className={
                   isForumResourceLink
                     ? "inline-flex cursor-pointer items-center gap-1 text-blue-600 hover:underline"
@@ -58,6 +60,9 @@ export function PostContent({ content }: PostContentProps) {
               </a>
             );
           },
+          img: ({ node: _node, ...props }) => (
+            <img {...props} referrerPolicy="no-referrer" />
+          ),
         }}
       />
     </div>
