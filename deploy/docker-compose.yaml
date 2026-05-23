@@ -3,6 +3,8 @@ services:
     container_name: ${CONTAINER_NAME:-bbs-wiki}
     image: ${REGISTRY_HOST:-}${IMAGE_NAME:-bbs-wiki}:${IMAGE_TAG:-latest}
     pull_policy: always
+    env_file:
+      - .env
     restart: unless-stopped
     ports:
       - "${PORT:-50030}:50030"
@@ -10,7 +12,7 @@ services:
       NODE_ENV: production
       PORT: 50030
       HOSTNAME: 0.0.0.0
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: "${DATABASE_URL}"
       AUTH_SECRET: ${AUTH_SECRET:-}
       AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-}

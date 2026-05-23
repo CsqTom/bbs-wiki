@@ -27,23 +27,6 @@ async function main() {
   });
 
   console.log(`Admin user created: ${admin.email} (password: admin123)`);
-
-  const existingBoard = await prisma.board.findFirst({
-    where: { name: "General Discussion" },
-    select: { id: true, name: true },
-  });
-
-  const board =
-    existingBoard ??
-    (await prisma.board.create({
-      data: {
-        name: "General Discussion",
-        description: "A public board for general topics",
-        isPublic: true,
-      },
-    }));
-
-  console.log(`Public board created: ${board.name}`);
 }
 
 main()
