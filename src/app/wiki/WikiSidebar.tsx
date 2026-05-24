@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import {
   buildDirectoryTree,
   flattenDirectoryOptions,
@@ -125,6 +126,7 @@ export function WikiSidebar({
     () => new Map(directoryOptions.map((option) => [option.id, option.href])),
     [directoryOptions],
   );
+  const confirm = useConfirm();
   const [expandedIds, setExpandedIds] = useState(
     () => new Set(directories.map((directory) => directory.id)),
   );
@@ -228,12 +230,15 @@ export function WikiSidebar({
     label: string,
     href?: string,
   ) {
-    const confirmed = window.confirm(
-      type === "directory"
+    const isConfirmed = await confirm({
+      title: "确认删除",
+      message: type === "directory"
         ? `确定删除 "${label}"？这将会连同内部的子目录和文章一起删除。`
         : `确定删除 "${label}"？`,
-    );
-    if (!confirmed) return;
+      confirmText: "删除",
+      danger: true
+    });
+    if (!isConfirmed) return;
 
     const requestKey = `${type}:${id}`;
     setDeletingKey(requestKey);
@@ -286,17 +291,16 @@ export function WikiSidebar({
           >
             新建文章
           </button>
-          <button
-            type="button"
-            onClick={() => router.push("/wiki/shares")}
-            className={`rounded-lg px-3 py-1.5 text-sm text-white ${
+          <Link
+            href="/wiki/shares"
+            className={`rounded-lg px-3 py-1.5 text-sm text-white flex items-center justify-center ${
               pathname === "/wiki/shares"
                 ? "bg-violet-700 hover:bg-violet-800"
                 : "bg-violet-600 hover:bg-violet-700"
             }`}
           >
             分享管理
-          </button>
+          </Link>
         </div>
       </div>
 

@@ -4,6 +4,8 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import MarkdownPreview from "@uiw/react-markdown-preview";
 import remarkGfm from "remark-gfm";
+import { useConfirm, usePrompt } from "@/components/ui/ConfirmDialog";
+import { PublishToForumDialog } from "./PublishToForumDialog";
 
 const MindMapViewer = lazy(() =>
   import("@/components/wiki/MindMapViewer").then((m) => ({
@@ -40,8 +42,62 @@ export function WikiArticleEditor({
     useState<RightPanelMode>("preview");
   const [editorWidth, setEditorWidth] = useState(52);
   const [isDragging, setIsDragging] = useState(false);
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const confirm = useConfirm();
+  const prompt = usePrompt();
 
   const hasUnsavedChanges = content !== savedContent;
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "系统可能不会保存您所做的更改。";
+      return e.returnValue;
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    const handleAnchorClick = async (e: MouseEvent) => {
+      const target = (e.target as Element).closest("a");
+      if (!target) return;
+
+      const href = target.getAttribute("href");
+      if (!href || target.target === "_blank" || href.startsWith("#") || href.startsWith("javascript:")) return;
+
+      try {
+        const currentUrl = new URL(window.location.href);
+        const targetUrl = new URL(href, window.location.href);
+
+        // 如果目标URL和当前URL(不含hash)不同，则说明要离开页面
+        if (currentUrl.pathname !== targetUrl.pathname || currentUrl.search !== targetUrl.search) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const isConfirmed = await confirm({
+            title: "Wiki未保存更改",
+            message: "当前页面有未保存的更改，离开后将丢失未保存的更改。确定要离开吗？",
+            confirmText: "离开",
+            cancelText: "取消",
+            danger: true
+          });
+          
+          if (isConfirmed) {
+            router.push(href);
+          }
+        }
+      } catch (err) {
+        // 忽略无效URL导致的错误
+      }
+    };
+
+    document.addEventListener("click", handleAnchorClick, { capture: true });
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleAnchorClick, { capture: true });
+    };
+  }, [hasUnsavedChanges]);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -146,18 +202,32 @@ export function WikiArticleEditor({
     }
   }
 
-  function handleWebImage() {
-    const url = prompt("请输入网络图片URL:", "https://");
+  async function handleWebImage() {
+    const url = await prompt({
+      title: "插入网络图片",
+      message: "请输入网络图片URL:",
+      defaultValue: "https://"
+    });
     if (url && url.trim()) {
       insertText(`![图片](${url.trim()})`);
     }
   }
 
-  function handleWebLink() {
-    const url = prompt("请输入链接URL:", "https://");
+  async function handleWebLink() {
+    const url = await prompt({
+      title: "插入网页链接",
+      message: "请输入链接URL:",
+      defaultValue: "https://"
+    });
     if (!url || !url.trim()) return;
-    const text = prompt("请输入链接显示文字:", "链接");
+    
+    const text = await prompt({
+      title: "插入网页链接",
+      message: "请输入链接显示文字:",
+      defaultValue: "链接"
+    });
     if (!text || !text.trim()) return;
+    
     insertText(`[${text.trim()}](${url.trim()})`);
   }
 
@@ -171,6 +241,13 @@ export function WikiArticleEditor({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setIsPublishDialogOpen(true)}
+            className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded text-sm hover:bg-indigo-200 transition-colors border border-indigo-200 flex items-center gap-1"
+          >
+            发布到论坛
+          </button>
+          <div className="w-px h-6 bg-gray-300 mx-1"></div>
           <button
             onClick={() => setContent(savedContent)}
             disabled={!hasUnsavedChanges || saving}
@@ -345,6 +422,13 @@ export function WikiArticleEditor({
           </div>
         </section>
       </div>
+
+      <PublishToForumDialog
+        isOpen={isPublishDialogOpen}
+        onClose={() => setIsPublishDialogOpen(false)}
+        articleId={article.id}
+        defaultTitle={article.title}
+      />
     </div>
   );
 }

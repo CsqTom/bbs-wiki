@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirm, usePrompt } from "@/components/ui/ConfirmDialog";
 
 interface User {
   id: string;
@@ -14,6 +15,8 @@ interface User {
 export function UserList({ users: initialUsers }: { users: User[] }) {
   const router = useRouter();
   const [users, setUsers] = useState(initialUsers);
+  const confirm = useConfirm();
+  const prompt = usePrompt();
 
   async function handleRoleChange(userId: string, newRole: string) {
     await fetch(`/api/users/${userId}`, {
@@ -28,7 +31,11 @@ export function UserList({ users: initialUsers }: { users: User[] }) {
   }
 
   async function handleResetPassword(userId: string) {
-    const newPassword = prompt("请输入新密码：", "123456");
+    const newPassword = await prompt({
+      title: "重置密码",
+      message: "请输入新密码：",
+      defaultValue: "123456"
+    });
     if (!newPassword) return;
 
     try {
@@ -48,7 +55,14 @@ export function UserList({ users: initialUsers }: { users: User[] }) {
   }
 
   async function handleDelete(userId: string) {
-    if (!confirm("确定要删除这个用户吗？")) return;
+    const isConfirmed = await confirm({
+      title: "删除用户",
+      message: "确定要删除这个用户吗？此操作无法撤销。",
+      confirmText: "删除",
+      danger: true
+    });
+    if (!isConfirmed) return;
+    
     await fetch(`/api/users/${userId}`, { method: "DELETE" });
     setUsers(users.filter((u) => u.id !== userId));
     router.refresh();

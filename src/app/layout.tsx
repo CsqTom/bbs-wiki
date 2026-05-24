@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "@uiw/react-markdown-preview/markdown.css";
 import { Navbar } from "@/components/layout/Navbar";
+import { ConfirmProvider } from "@/components/ui/ConfirmDialog";
 
 export const metadata: Metadata = {
   title: "BBS-Wiki",
@@ -16,8 +17,10 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="min-h-screen">
-        <Navbar />
-        <main className="flex-1 min-h-0 w-full px-4 py-6">{children}</main>
+        <ConfirmProvider>
+          <Navbar />
+          <main className="flex-1 min-h-0 w-full px-4 py-6">{children}</main>
+        </ConfirmProvider>
       </body>
     </html>
   );
