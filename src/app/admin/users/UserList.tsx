@@ -27,6 +27,26 @@ export function UserList({ users: initialUsers }: { users: User[] }) {
     router.refresh();
   }
 
+  async function handleResetPassword(userId: string) {
+    const newPassword = prompt("请输入新密码：", "123456");
+    if (!newPassword) return;
+
+    try {
+      const res = await fetch(`/api/users/${userId}/password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      if (res.ok) {
+        alert("密码重置成功");
+      } else {
+        alert("密码重置失败");
+      }
+    } catch (e) {
+      alert("密码重置失败");
+    }
+  }
+
   async function handleDelete(userId: string) {
     if (!confirm("确定要删除这个用户吗？")) return;
     await fetch(`/api/users/${userId}`, { method: "DELETE" });
@@ -65,6 +85,12 @@ export function UserList({ users: initialUsers }: { users: User[] }) {
                 {new Date(u.createdAt).toLocaleDateString()}
               </td>
               <td className="px-4 py-3">
+                <button
+                  onClick={() => handleResetPassword(u.id)}
+                  className="text-blue-600 hover:text-blue-800 text-sm mr-3"
+                >
+                  重置密码
+                </button>
                 <button
                   onClick={() => handleDelete(u.id)}
                   className="text-red-600 hover:text-red-800 text-sm"

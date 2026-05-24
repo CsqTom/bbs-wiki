@@ -8,7 +8,7 @@ export function SignOutButton() {
       onClick={() => signOut({ callbackUrl: "/" })}
       className="text-sm text-red-600 hover:text-red-800"
     >
-      Sign Out
+      退出登录
     </button>
   );
 }
