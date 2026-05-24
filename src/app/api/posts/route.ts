@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { hasForumResourceHref } from "@/lib/forum-resource";
 
 export async function POST(request: Request) {
   try {
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     }
 
     const hasWikiSource = Boolean(sourceType && sourceId);
+    const hasForumResource = typeof content === "string" && hasForumResourceHref(content);
 
     const post = await prisma.post.create({
       data: {
@@ -41,7 +43,8 @@ export async function POST(request: Request) {
         userId: user.id,
         title: title.trim(),
         content: typeof content === "string" ? content : "",
-        syncEnabled: hasWikiSource,
+        // 手动发帖时如果正文里引用了 Wiki/分享链接，也标记为已关联。
+        syncEnabled: hasWikiSource || hasForumResource,
         ...(hasWikiSource ? { sourceType, sourceId } : {}),
       },
     });

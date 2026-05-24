@@ -66,3 +66,7 @@ export function extractFirstForumResourceHref(content: string) {
 
   return null;
 }
+
+export function hasForumResourceHref(content: string) {
+  return Boolean(extractFirstForumResourceHref(content));
+}

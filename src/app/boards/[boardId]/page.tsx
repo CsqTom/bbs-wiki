@@ -2,7 +2,6 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth-utils";
 import Link from "next/link";
-import Image from "next/image";
 import { CreatePostClient } from "./CreatePostClient";
 import { extractThumbnail, stripMarkdown } from "@/lib/text-utils";
 
@@ -86,9 +85,9 @@ export default async function BoardPage({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-lg text-gray-900 truncate pr-4">{post.title}</h3>
-                    {post.syncEnabled && (
+                    {post.syncEnabled  && (
                       <span className="shrink-0 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-md border border-blue-100">
-                        Wiki 同步
+                        wiki分享
                       </span>
                     )}
                   </div>

@@ -82,16 +82,17 @@ export function PublishToForumDialog({
 
       const shareData = await shareRes.json();
       const shareUrl = shareData.shareUrl;
+      const normalizedTitle = title.trim();
 
       // 2. 创建论坛帖子
-      const postContent = `这是从 Wiki 分享的文章，请点击链接查看内容：\n\n[${title}](${shareUrl})`;
+      const postContent = `[${normalizedTitle}](${shareUrl})`;
       
       const postRes = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           boardId: selectedBoardId,
-          title: title.trim(),
+          title: normalizedTitle,
           content: postContent,
           sourceType: "ARTICLE",
           sourceId: articleId,
@@ -181,7 +182,7 @@ export function PublishToForumDialog({
               <p>发布时将自动：</p>
               <ul className="list-disc ml-4 mt-1 space-y-0.5">
                 <li>为您当前的 Wiki 生成一个{expiresInHours === null ? "永久有效" : "有期限"}的分享链接</li>
-                <li>在所选版块创建新帖子，内容自动包含该分享链接</li>
+                <li>在所选版块创建新帖子，正文自动填写为 Markdown 分享链接</li>
               </ul>
             </div>
 

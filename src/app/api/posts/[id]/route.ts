@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, canDeletePost, canEditPost } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { hasForumResourceHref } from "@/lib/forum-resource";
 
 export async function DELETE(
   _request: Request,
@@ -55,11 +56,15 @@ export async function PATCH(
       return NextResponse.json({ error: "无编辑权限" }, { status: 403 });
     }
 
+    const nextSyncEnabled =
+      content !== undefined ? hasForumResourceHref(String(content)) : undefined;
+
     const updatedPost = await prisma.post.update({
       where: { id: postId },
       data: {
         ...(title !== undefined ? { title } : {}),
         ...(content !== undefined ? { content } : {}),
+        ...(nextSyncEnabled !== undefined ? { syncEnabled: nextSyncEnabled } : {}),
       },
     });
 
