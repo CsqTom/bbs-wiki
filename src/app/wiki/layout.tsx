@@ -26,6 +26,18 @@ export default async function WikiLayout({
     orderBy: { title: "asc" },
   });
 
+  const collaborativeArticles = await prisma.wikiArticle.findMany({
+    where: {
+      collaborators: {
+        some: { userId: user.id },
+      },
+    },
+    include: {
+      user: { select: { id: true, name: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
   return (
     <div className="flex h-[calc(100vh-8.5rem)] min-h-[720px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <WikiSidebar
@@ -46,6 +58,12 @@ export default async function WikiLayout({
           title: article.title,
           slug: article.slug,
           directoryId: article.directoryId,
+        }))}
+        collaborativeArticles={collaborativeArticles.map((article) => ({
+          id: article.id,
+          title: article.title,
+          ownerName: article.user.name,
+          ownerId: article.user.id,
         }))}
       />
 

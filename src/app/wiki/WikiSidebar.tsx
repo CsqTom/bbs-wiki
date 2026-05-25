@@ -108,12 +108,21 @@ function TreeNode({
   );
 }
 
+interface CollaborativeArticleItem {
+  id: string;
+  title: string;
+  ownerName: string;
+  ownerId: string;
+}
+
 export function WikiSidebar({
   directories,
   rootArticles,
+  collaborativeArticles = [],
 }: {
   directories: WikiTreeDirectory[];
   rootArticles: WikiTreeArticle[];
+  collaborativeArticles?: CollaborativeArticleItem[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -366,68 +375,118 @@ export function WikiSidebar({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-auto px-3 py-3">
-        <div className="space-y-1">
-          {rootArticles.map((article) => {
-            const href = `/wiki/${article.slug}`;
-            const isActive = pathname === href;
-            return (
-              <div
-                key={article.id}
-                className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 ${
-                  isActive ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"
-                }`}
-              >
-                <Link href={href} className="min-w-0 flex-1 truncate text-sm">
-                  {article.title}
-                </Link>
-                <button
-                  type="button"
-                  disabled={deletingKey === `article:${article.id}`}
-                  onClick={() =>
-                    handleDelete("article", article.id, article.title, href)
-                  }
-                  className="rounded px-2 py-1 text-xs text-red-500 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50"
-                >
-                  {deletingKey === `article:${article.id}` ? "..." : "删"}
-                </button>
-              </div>
-            );
-          })}
+      {/* 我的Wiki */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 px-4 pb-1 pt-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+            我的Wiki
+          </h2>
         </div>
-
-        {tree.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {tree.map((node) => (
-              <TreeNode
-                key={node.id}
-                node={node}
-                pathname={pathname}
-                expandedIds={expandedIds}
-                onToggle={toggleDirectory}
-                onDeleteDirectory={(directory) =>
-                  handleDelete(
-                    "directory",
-                    directory.id,
-                    directory.name,
-                    directory.href,
-                  )
-                }
-                onDeleteArticle={(article) =>
-                  handleDelete("article", article.id, article.title, article.href)
-                }
-                deletingKey={deletingKey}
-              />
-            ))}
+        <div className="min-h-0 flex-1 overflow-auto px-3 pb-3">
+          <div className="space-y-1">
+            {rootArticles.map((article) => {
+              const href = `/wiki/${article.slug}`;
+              const isActive = pathname === href;
+              return (
+                <div
+                  key={article.id}
+                  className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 ${
+                    isActive ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"
+                  }`}
+                >
+                  <Link href={href} className="min-w-0 flex-1 truncate text-sm">
+                    {article.title}
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={deletingKey === `article:${article.id}`}
+                    onClick={() =>
+                      handleDelete("article", article.id, article.title, href)
+                    }
+                    className="rounded px-2 py-1 text-xs text-red-500 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50"
+                  >
+                    {deletingKey === `article:${article.id}` ? "..." : "删"}
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        )}
 
-        {tree.length === 0 && rootArticles.length === 0 && (
-          <p className="py-8 text-center text-sm text-gray-500">
-            你的 wiki 为空。创建一个目录或文章来开始。
-          </p>
-        )}
+          {tree.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {tree.map((node) => (
+                <TreeNode
+                  key={node.id}
+                  node={node}
+                  pathname={pathname}
+                  expandedIds={expandedIds}
+                  onToggle={toggleDirectory}
+                  onDeleteDirectory={(directory) =>
+                    handleDelete(
+                      "directory",
+                      directory.id,
+                      directory.name,
+                      directory.href,
+                    )
+                  }
+                  onDeleteArticle={(article) =>
+                    handleDelete("article", article.id, article.title, article.href)
+                  }
+                  deletingKey={deletingKey}
+                />
+              ))}
+            </div>
+          )}
+
+          {tree.length === 0 && rootArticles.length === 0 && (
+            <p className="py-8 text-center text-sm text-gray-500">
+              你的 wiki 为空。创建一个目录或文章来开始。
+            </p>
+          )}
+        </div>
       </div>
+
+      {/* 协作Wiki */}
+      {collaborativeArticles.length > 0 && (
+        <>
+          <div className="shrink-0 border-t border-gray-200" />
+          <div className="flex min-h-0 flex-[0.35] flex-col overflow-hidden">
+            <div className="shrink-0 px-4 pb-1 pt-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                协作Wiki
+              </h2>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto px-3 pb-3">
+              <div className="space-y-1">
+                {collaborativeArticles.map((art) => {
+                  const href = `/wiki/collaborative/${art.id}`;
+                  const isActive = pathname === href;
+                  return (
+                    <div
+                      key={art.id}
+                      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 ${
+                        isActive
+                          ? "bg-blue-100 text-blue-700"
+                          : "hover:bg-gray-100"
+                      }`}
+                    >
+                      <Link
+                        href={href}
+                        className="min-w-0 flex-1 truncate text-sm"
+                      >
+                        {art.title}
+                      </Link>
+                      <span className="shrink-0 text-xs text-gray-400">
+                        {art.ownerName}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </aside>
   );
 }

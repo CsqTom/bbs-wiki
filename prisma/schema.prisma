@@ -17,12 +17,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  wikiDirectories WikiDirectory[]
-  wikiArticles    WikiArticle[]
-  wikiShareLinks  WikiShareLink[]
-  posts           Post[]
-  comments        Comment[]
-  boardPermissions BoardPermission[]
+  wikiDirectories   WikiDirectory[]
+  wikiArticles      WikiArticle[]
+  wikiShareLinks    WikiShareLink[]
+  wikiCollaborators WikiCollaborator[]
+  posts             Post[]
+  comments          Comment[]
+  boardPermissions  BoardPermission[]
 }
 
 model Board {
@@ -76,12 +77,26 @@ model WikiArticle {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  directory WikiDirectory? @relation(fields: [directoryId], references: [id], onDelete: SetNull)
-  posts     Post[]
-  shareItems WikiShareItem[]
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  directory     WikiDirectory?     @relation(fields: [directoryId], references: [id], onDelete: SetNull)
+  posts         Post[]
+  shareItems    WikiShareItem[]
+  collaborators WikiCollaborator[]
 
   @@unique([userId, directoryId, slug])
+}
+
+model WikiCollaborator {
+  id        String   @id @default(uuid())
+  articleId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  article WikiArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, userId])
+  @@index([userId])
 }
 
 model WikiShareLink {

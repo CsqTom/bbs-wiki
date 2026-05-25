@@ -6,6 +6,7 @@ import MarkdownPreview from "@uiw/react-markdown-preview";
 import remarkGfm from "remark-gfm";
 import { useConfirm, usePrompt } from "@/components/ui/ConfirmDialog";
 import { PublishToForumDialog } from "./PublishToForumDialog";
+import { CollaboratorDialog } from "./CollaboratorDialog";
 
 const MindMapViewer = lazy(() =>
   import("@/components/wiki/MindMapViewer").then((m) => ({
@@ -26,8 +27,12 @@ interface Article {
 
 export function WikiArticleEditor({
   article,
+  isCollaborative,
+  isOwner,
 }: {
   article: Article;
+  isCollaborative?: boolean;
+  isOwner?: boolean;
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,6 +48,7 @@ export function WikiArticleEditor({
   const [editorWidth, setEditorWidth] = useState(52);
   const [isDragging, setIsDragging] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [isCollabDialogOpen, setIsCollabDialogOpen] = useState(false);
   const confirm = useConfirm();
   const prompt = usePrompt();
 
@@ -241,20 +247,35 @@ export function WikiArticleEditor({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setIsPublishDialogOpen(true)}
-            className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded text-sm hover:bg-indigo-200 transition-colors border border-indigo-200 flex items-center gap-1"
-          >
-            发布到论坛
-          </button>
+          {!isCollaborative && (
+            <button
+              onClick={() => setIsPublishDialogOpen(true)}
+              className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded text-sm hover:bg-indigo-200 transition-colors border border-indigo-200 flex items-center gap-1"
+            >
+              发布到论坛
+            </button>
+          )}
           <div className="w-px h-6 bg-gray-300 mx-1"></div>
-          <button
-            onClick={() => setContent(savedContent)}
-            disabled={!hasUnsavedChanges || saving}
-            className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-300 disabled:opacity-50"
-          >
-            Reset
-          </button>
+          {!isCollaborative && (
+            <button
+              onClick={() => setContent(savedContent)}
+              disabled={!hasUnsavedChanges || saving}
+              className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-300 disabled:opacity-50"
+            >
+              Reset
+            </button>
+          )}
+          {isOwner && (
+            <>
+              <button
+                onClick={() => setIsCollabDialogOpen(true)}
+                className="bg-amber-100 text-amber-700 px-3 py-1.5 rounded text-sm hover:bg-amber-200 transition-colors border border-amber-200"
+              >
+                添加协作人
+              </button>
+              <div className="w-px h-6 bg-gray-300 mx-1"></div>
+            </>
+          )}
           <button
             onClick={handleSave}
             disabled={saving || !hasUnsavedChanges}
@@ -265,16 +286,13 @@ export function WikiArticleEditor({
         </div>
       </div>
 
-      <div className="shrink-0 flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-sm text-blue-900">
-        <span>
-          {hasUnsavedChanges
-            ? "当前有未保存修改，右侧面板会实时同步编辑内容。"
-            : "当前内容已保存，右侧面板展示最新版本。"}
-        </span>
-        <span className="text-xs text-blue-700">
-          Editor {Math.round(editorWidth)}% / Panel {Math.round(100 - editorWidth)}%
-        </span>
-      </div>
+      {isCollaborative && (
+        <div className="shrink-0 flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-800">
+          <span className="font-medium">协作模式</span>
+          <span className="text-orange-400">|</span>
+          <span>具有编辑权限，无删除权限</span>
+        </div>
+      )}
 
       <div
         ref={containerRef}
@@ -429,6 +447,13 @@ export function WikiArticleEditor({
         articleId={article.id}
         defaultTitle={article.title}
       />
+
+      {isCollabDialogOpen && (
+        <CollaboratorDialog
+          articleId={article.id}
+          onClose={() => setIsCollabDialogOpen(false)}
+        />
+      )}
     </div>
   );
 }

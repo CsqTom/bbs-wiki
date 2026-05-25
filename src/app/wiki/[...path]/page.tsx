@@ -62,6 +62,7 @@ export default async function WikiPathPage({
             directoryId: article.directoryId,
             updatedAt: article.updatedAt.toISOString(),
           }}
+          isOwner={true}
         />
       </div>
     );

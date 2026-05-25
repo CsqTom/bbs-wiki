@@ -43,7 +43,15 @@ export async function PATCH(
   const { content, title } = await request.json();
 
   const article = await prisma.wikiArticle.findUnique({ where: { id } });
-  if (!article || article.userId !== user.id) {
+  if (!article) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const isOwner = article.userId === user.id;
+  const isCollaborator = !isOwner && await prisma.wikiCollaborator.findUnique({
+    where: { articleId_userId: { articleId: id, userId: user.id } },
+  });
+  if (!isOwner && !isCollaborator) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
