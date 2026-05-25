@@ -148,10 +148,10 @@ export default async function PostDetailPage({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="mb-4">
+      <div className="sticky top-0 z-20 -mx-4 mb-4 border-b border-gray-200 bg-gray-50/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <Link
           href={`/boards/${boardId}`}
-          className="text-sm text-blue-600 hover:underline"
+          className="inline-flex items-center text-sm font-medium text-blue-600 hover:underline"
         >
           ← 返回版块
         </Link>

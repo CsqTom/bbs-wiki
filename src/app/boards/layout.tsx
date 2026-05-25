@@ -1,8 +1,6 @@
-import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import { ForumSidebar } from "./ForumSidebar";
+import { BoardsShell } from "./BoardsShell";
 
 export default async function BoardsLayout({
   children,
@@ -41,15 +39,8 @@ export default async function BoardsLayout({
   const allPrivateBoards = [...privateBoards, ...allBoards];
 
   return (
-    <div className="flex h-[calc(100vh-8.5rem)] min-h-[720px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <ForumSidebar 
-        publicBoards={publicBoards} 
-        privateBoards={allPrivateBoards} 
-      />
-
-      <section className="min-w-0 flex-1 bg-gray-50 flex flex-col">
-        {children}
-      </section>
-    </div>
+    <BoardsShell publicBoards={publicBoards} privateBoards={allPrivateBoards}>
+      {children}
+    </BoardsShell>
   );
 }

@@ -441,6 +441,8 @@ export function PostDetailClient({
       leftPanel={leftPanel}
       rightPanel={rightPanel}
       isRightOpen={isEditing || !!wikiPath}
+      mobileStackOrder={!isEditing && !!wikiPath ? "right-first" : "left-first"}
+      mobileLayout={!isEditing && !!wikiPath ? "page-stack" : "split"}
     />
   );
 }
