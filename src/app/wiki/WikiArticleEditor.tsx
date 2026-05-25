@@ -282,15 +282,13 @@ export function WikiArticleEditor({
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
             </>
           )}
-          {!isCollaborative && (
-            <button
-              onClick={() => setContent(savedContent)}
-              disabled={!hasUnsavedChanges || saving}
-              className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-300 disabled:opacity-50"
-            >
-              Reset
-            </button>
-          )}
+          <button
+            onClick={() => setContent(savedContent)}
+            disabled={!hasUnsavedChanges || saving}
+            className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-300 disabled:opacity-50"
+          >
+            Reset
+          </button>
           <button
             onClick={handleSave}
             disabled={saving || !hasUnsavedChanges}

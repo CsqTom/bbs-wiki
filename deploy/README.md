@@ -46,6 +46,7 @@ DATABASE_URL=postgresql://user:password@192.168.0.65:5432/bbs_wiki
 AUTH_SECRET="bbs-wiki-auth-secret-change-in-production11"
 AUTH_TRUST_HOST=true
 NEXTAUTH_URL=http://localhost:50030
+REGISTRATION_CODE="your-registration-code"
 
 IMAGE_NAME=bbs-wiki
 IMAGE_TAG=v2026.5.23
@@ -57,6 +58,7 @@ CONTAINER_NAME=bbs-wiki
 - `DATABASE_URL`：必填，数据库连接串
 - `AUTH_SECRET`：建议填写，NextAuth 使用
 - `NEXTAUTH_URL`：建议按实际访问地址填写
+- `REGISTRATION_CODE`：注册码，留空或删除则关闭注册校验
 - `IMAGE_NAME`、`IMAGE_TAG`：用于 compose 和推送脚本复用
 - 容器启动时会自动执行 `pnpm prisma db push`，用于自动创建/同步表结构
 - 容器启动时会自动执行 `pnpm db:seed`，用于初始化默认管理员

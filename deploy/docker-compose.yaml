@@ -12,7 +12,3 @@ services:
       NODE_ENV: production
       PORT: 50030
       HOSTNAME: 0.0.0.0
-      DATABASE_URL: "${DATABASE_URL}"
-      AUTH_SECRET: ${AUTH_SECRET:-}
-      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-}
