@@ -63,20 +63,6 @@ export async function PATCH(
     },
   });
 
-  // If content changed and there are synced posts, update them
-  if (content !== undefined) {
-    const syncedPosts = await prisma.post.findMany({
-      where: { sourceId: id, syncEnabled: true },
-    });
-
-    for (const post of syncedPosts) {
-      await prisma.post.update({
-        where: { id: post.id },
-        data: { content, title: updated.title },
-      });
-    }
-  }
-
   return NextResponse.json(updated);
 }
 

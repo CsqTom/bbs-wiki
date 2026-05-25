@@ -43,8 +43,8 @@ export async function POST(request: Request) {
         userId: user.id,
         title: title.trim(),
         content: typeof content === "string" ? content : "",
-        // 手动发帖时如果正文里引用了 Wiki/分享链接，也标记为已关联。
-        syncEnabled: hasWikiSource || hasForumResource,
+        // 帖子仅保留 wiki 分享链接，不直接同步内容
+        syncEnabled: hasForumResource,
         ...(hasWikiSource ? { sourceType, sourceId } : {}),
       },
     });
