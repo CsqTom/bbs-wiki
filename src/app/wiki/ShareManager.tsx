@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   copyShareUrl,
   createWikiShareLink,
   deleteWikiShareLink,
+  updateShareExpiry,
   type WikiShareListItem,
 } from "./share-client";
 import {
@@ -22,6 +23,27 @@ function formatExpiry(expiresAt: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(expiresAt));
+}
+
+function formatRemainingDays(expiresAt: string | null) {
+  if (!expiresAt) return "永久";
+
+  const now = Date.now();
+  const expiry = new Date(expiresAt).getTime();
+  const diffMs = expiry - now;
+
+  if (diffMs <= 0) return "已过期";
+
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays > 365) {
+    const years = Math.floor(diffDays / 365);
+    return `剩余 ${years} 年`;
+  }
+  if (diffDays > 30) {
+    const months = Math.floor(diffDays / 30);
+    return `剩余 ${months} 个月`;
+  }
+  return `剩余 ${diffDays} 天`;
 }
 
 function buildShareObjectLabel(share: {
@@ -132,6 +154,25 @@ export function ShareManager({
   const [shareExpiresHours, setShareExpiresHours] = useState("24");
   const [generatingShareLink, setGeneratingShareLink] = useState(false);
   const [deletingShareId, setDeletingShareId] = useState<string | null>(null);
+  const [editingExpiryId, setEditingExpiryId] = useState<string | null>(null);
+  const [updatingExpiryId, setUpdatingExpiryId] = useState<string | null>(null);
+  const expiryDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!editingExpiryId) return;
+
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        expiryDropdownRef.current &&
+        !expiryDropdownRef.current.contains(e.target as Node)
+      ) {
+        setEditingExpiryId(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [editingExpiryId]);
   const tree = useMemo(() => buildDirectoryTree(directories), [directories]);
   const [expandedIds, setExpandedIds] = useState(
     () => new Set(directories.map((directory) => directory.id)),
@@ -207,6 +248,31 @@ export function ShareManager({
       await copyShareUrl(normalizeShareUrl(shareUrl));
     } catch {
       window.alert("复制失败，请手动复制链接。");
+    }
+  }
+
+  async function handleUpdateExpiry(
+    share: WikiShareListItem,
+    expiresInHours: number | null,
+  ) {
+    setUpdatingExpiryId(share.id);
+
+    try {
+      const result = await updateShareExpiry(share.id, expiresInHours);
+      setShareLinks((previous) =>
+        previous.map((item) =>
+          item.id === share.id
+            ? { ...item, expiresAt: result?.expiresAt ?? null }
+            : item,
+        ),
+      );
+      setEditingExpiryId(null);
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "更新过期时间失败，请稍后重试。",
+      );
+    } finally {
+      setUpdatingExpiryId(null);
     }
   }
 
@@ -344,7 +410,8 @@ export function ShareManager({
               <thead className="sticky top-0 bg-gray-50">
                 <tr className="border-b border-gray-200 text-left text-sm text-gray-500">
                   <th className="px-5 py-3 font-medium">分享对象</th>
-                  <th className="px-5 py-3 font-medium">有效期至</th>
+                  <th className="px-5 py-3 font-medium">有效日期</th>
+                  <th className="px-5 py-3 font-medium">剩余时间</th>
                   <th className="px-5 py-3 font-medium">操作</th>
                 </tr>
               </thead>
@@ -361,6 +428,9 @@ export function ShareManager({
                     </td>
                     <td className="px-5 py-4 text-sm text-gray-600">
                       {formatExpiry(share.expiresAt)}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-600">
+                      {formatRemainingDays(share.expiresAt)}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-2">
@@ -379,6 +449,51 @@ export function ShareManager({
                         >
                           复制链接
                         </button>
+                        <div
+                          ref={editingExpiryId === share.id ? expiryDropdownRef : null}
+                          className="relative"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingExpiryId(
+                                editingExpiryId === share.id ? null : share.id,
+                              )
+                            }
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            更换过期
+                          </button>
+                          {editingExpiryId === share.id && (
+                            <div className="absolute right-0 top-full z-10 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                              {[
+                                { label: "1 小时", value: 1 },
+                                { label: "24 小时", value: 24 },
+                                { label: "3 天", value: 72 },
+                                { label: "7 天", value: 168 },
+                                { label: "30 天", value: 720 },
+                                { label: "永久有效", value: "never" },
+                              ].map((option) => (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  disabled={updatingExpiryId === share.id}
+                                  onClick={() =>
+                                    handleUpdateExpiry(
+                                      share,
+                                      option.value === "never"
+                                        ? null
+                                        : (option.value as number),
+                                    )
+                                  }
+                                  className="w-full px-4 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <button
                           type="button"
                           disabled={deletingShareId === share.id}

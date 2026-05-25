@@ -152,6 +152,20 @@ export function WikiArticleEditor({
     };
   }, [content]);
 
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        handleSaveRef.current();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -255,16 +269,8 @@ export function WikiArticleEditor({
               发布到论坛
             </button>
           )}
+          
           <div className="w-px h-6 bg-gray-300 mx-1"></div>
-          {!isCollaborative && (
-            <button
-              onClick={() => setContent(savedContent)}
-              disabled={!hasUnsavedChanges || saving}
-              className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-300 disabled:opacity-50"
-            >
-              Reset
-            </button>
-          )}
           {isOwner && (
             <>
               <button
@@ -275,6 +281,15 @@ export function WikiArticleEditor({
               </button>
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
             </>
+          )}
+          {!isCollaborative && (
+            <button
+              onClick={() => setContent(savedContent)}
+              disabled={!hasUnsavedChanges || saving}
+              className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-300 disabled:opacity-50"
+            >
+              Reset
+            </button>
           )}
           <button
             onClick={handleSave}

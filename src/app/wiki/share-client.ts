@@ -61,3 +61,24 @@ export async function deleteWikiShareLink(shareId: string) {
 
   return data;
 }
+
+export async function updateShareExpiry(
+  shareId: string,
+  expiresInHours: number | null,
+) {
+  const response = await fetch(`/api/wiki/shares/${shareId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expiresInHours }),
+  });
+
+  const data = (await response.json().catch(() => null)) as
+    | { id: string; expiresAt: string | null; error?: string }
+    | null;
+
+  if (!response.ok) {
+    throw new Error(data?.error ?? "更新过期时间失败，请稍后重试。");
+  }
+
+  return data;
+}

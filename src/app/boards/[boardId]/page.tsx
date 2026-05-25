@@ -70,57 +70,61 @@ export default async function BoardPage({
         )}
       </div>
 
-      <div className="space-y-4 flex-1">
-        {posts.map((post) => {
-          const thumbnail = extractThumbnail(post.content);
-          const plainText = stripMarkdown(post.content);
-
-          return (
-            <Link 
-              href={`/boards/${board.id}/posts/${post.id}`} 
-              key={post.id} 
-              className="block bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-blue-100 transition-all"
-            >
-              <div className="flex gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-lg text-gray-900 truncate pr-4">{post.title}</h3>
-                    {post.syncEnabled  && (
-                      <span className="shrink-0 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-md border border-blue-100">
-                        wiki分享
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-600 line-clamp-2 leading-relaxed mb-3">
-                    {plainText || "暂无文字内容"}
-                  </div>
-                  <div className="text-xs text-gray-400 flex items-center gap-2">
-                    <span className="font-medium text-gray-600">{post.user.name}</span>
-                    <span>·</span>
-                    <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                
-                {thumbnail && (
-                  <div className="shrink-0 w-28 h-20 relative rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      src={thumbnail} 
-                      alt="封面" 
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-              </div>
-            </Link>
-          );
-        })}
-
-        {posts.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-200">
+      <div className="flex-1">
+        {posts.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 bg-white py-16 text-center">
             <p className="text-gray-500">
               当前版块暂无帖子，快来发布第一篇吧！
             </p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            {posts.map((post) => {
+              const thumbnail = extractThumbnail(post.content);
+              const plainText = stripMarkdown(post.content);
+
+              return (
+                <Link
+                  href={`/boards/${board.id}/posts/${post.id}`}
+                  key={post.id}
+                  className="block border-b border-gray-100 px-5 py-3 transition-colors last:border-b-0 hover:bg-gray-50"
+                >
+                  <div className="flex gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <h3 className="truncate pr-2 text-lg font-semibold leading-snug text-gray-900">
+                          {post.title}
+                        </h3>
+                        {post.syncEnabled && (
+                          <span className="shrink-0 rounded-md border border-blue-100 bg-blue-50 px-2 py-1 text-xs text-blue-600">
+                            wiki分享
+                          </span>
+                        )}
+                      </div>
+                      <div className="mb-2 line-clamp-2 text-sm leading-5 text-gray-400">
+                        {plainText || "暂无文字内容"}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs leading-none text-gray-400">
+                        <span className="font-medium">{post.user.name}</span>
+                        <span>·</span>
+                        <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+
+                    {thumbnail && (
+                      <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={thumbnail}
+                          alt="封面"
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
