@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import MarkdownPreview from "@uiw/react-markdown-preview";
 import remarkGfm from "remark-gfm";
@@ -92,7 +92,7 @@ export function WikiArticleEditor({
             router.push(href);
           }
         }
-      } catch (err) {
+      } catch {
         // 忽略无效URL导致的错误
       }
     };
@@ -103,7 +103,7 @@ export function WikiArticleEditor({
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("click", handleAnchorClick, { capture: true });
     };
-  }, [hasUnsavedChanges]);
+  }, [confirm, hasUnsavedChanges, router]);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -152,34 +152,43 @@ export function WikiArticleEditor({
     };
   }, [content]);
 
-  const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/wiki/${article.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(data?.error ?? "保存失败，请稍后重试");
+      }
+
+      setSavedContent(content);
+      router.refresh();
+    } catch (error) {
+      console.error("[wiki] 保存文章失败", error);
+      window.alert(
+        error instanceof Error ? error.message : "保存失败，请稍后重试",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }, [article.id, content, router]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        handleSaveRef.current();
+        void handleSave();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      await fetch(`/api/wiki/${article.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
-      setSavedContent(content);
-      router.refresh();
-    } finally {
-      setSaving(false);
-    }
-  }
+  }, [handleSave]);
 
   function insertText(text: string) {
     const textarea = textareaRef.current;

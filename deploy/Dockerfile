@@ -4,7 +4,7 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y openssl postgresql-client && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 RUN corepack prepare pnpm@10.29.2 --activate
 
@@ -51,8 +51,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/.next ./.next
-COPY deploy/init-bm25.js ./init-bm25.js
 
 EXPOSE 50030
 
-CMD ["sh", "-c", "test -n \"$DATABASE_URL\" && DATABASE_URL=\"$DATABASE_URL\" pnpm prisma db push && DATABASE_URL=\"$DATABASE_URL\" node init-bm25.js && DATABASE_URL=\"$DATABASE_URL\" pnpm db:seed && pnpm start"]
+CMD ["sh", "-c", "test -n \"$DATABASE_URL\" && DATABASE_URL=\"$DATABASE_URL\" pnpm prisma db push && DATABASE_URL=\"$DATABASE_URL\" pnpm db:seed && pnpm start"]
