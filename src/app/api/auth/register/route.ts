@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     if (expectedCode) {
       if (!code || code !== expectedCode) {
         return NextResponse.json(
-          { error: "Invalid registration code" },
+          { error: "Invalid registration code 无效注册码（请联系官方）" },
           { status: 403 },
         );
       }
