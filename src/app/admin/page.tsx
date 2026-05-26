@@ -37,6 +37,15 @@ export default async function AdminPage() {
             浏览所有用户的 Wiki 空间
           </p>
         </Link>
+        <Link
+          href="/admin/ai"
+          className="p-6 bg-white rounded-lg shadow hover:shadow-md transition"
+        >
+          <h2 className="text-lg font-semibold">Ai 问答管理</h2>
+          <p className="text-gray-600 text-sm mt-1">
+            配置 AI 模型和 API Key
+          </p>
+        </Link>
       </div>
     </div>
   );

@@ -51,7 +51,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/.next ./.next
+COPY deploy/init-bm25.js ./init-bm25.js
 
 EXPOSE 50030
 
-CMD ["sh", "-c", "test -n \"$DATABASE_URL\" && DATABASE_URL=\"$DATABASE_URL\" pnpm prisma db push && DATABASE_URL=\"$DATABASE_URL\" pnpm db:seed && pnpm start"]
+CMD ["sh", "-c", "test -n \"$DATABASE_URL\" && DATABASE_URL=\"$DATABASE_URL\" pnpm prisma db push && DATABASE_URL=\"$DATABASE_URL\" node init-bm25.js && DATABASE_URL=\"$DATABASE_URL\" pnpm db:seed && pnpm start"]

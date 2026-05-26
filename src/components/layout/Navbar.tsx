@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth-utils";
 import { SignOutButton } from "./SignOutButton";
+import { NavbarAIButton } from "@/components/ai/NavbarAIButton";
 
 export async function Navbar() {
   const user = await getCurrentUser();
@@ -34,7 +35,8 @@ export async function Navbar() {
               管理后台
             </Link>
           )}
-          
+          {user && <NavbarAIButton />}
+
         </div>
 
         <div className="flex items-center gap-4">
