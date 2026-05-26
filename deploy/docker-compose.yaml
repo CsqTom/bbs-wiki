@@ -1,5 +1,26 @@
 services:
+  paradedb:
+    image: paradedb/paradedb:0.23.4-pg16
+    container_name: ${CONTAINER_NAME:-bbs-wiki}-db
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-bbs_wiki}
+    volumes:
+      - paradedb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-bbs_wiki}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   bbs-wiki:
+    depends_on:
+      paradedb:
+        condition: service_healthy
     container_name: ${CONTAINER_NAME:-bbs-wiki}
     image: ${REGISTRY_HOST:-}${IMAGE_NAME:-bbs-wiki}:${IMAGE_TAG:-latest}
     pull_policy: always
@@ -12,3 +33,6 @@ services:
       NODE_ENV: production
       PORT: 50030
       HOSTNAME: 0.0.0.0
+
+volumes:
+  paradedb_data:

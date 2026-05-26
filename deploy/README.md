@@ -42,11 +42,16 @@ http://localhost:50030
 推荐在 `deploy` 目录下创建 `.env` 文件，至少配置以下变量：
 
 ```env
-DATABASE_URL=postgresql://user:password@192.168.0.65:5432/bbs_wiki
+DATABASE_URL=postgresql://postgres:postgres@paradedb:5432/bbs_wiki
 AUTH_SECRET="bbs-wiki-auth-secret-change-in-production11"
 AUTH_TRUST_HOST=true
 NEXTAUTH_URL=http://localhost:50030
 REGISTRATION_CODE="your-registration-code"
+
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=bbs_wiki
+DB_PORT=5432
 
 IMAGE_NAME=bbs-wiki
 IMAGE_TAG=v2026.5.23
@@ -55,14 +60,15 @@ CONTAINER_NAME=bbs-wiki
 
 说明：
 
-- `DATABASE_URL`：必填，数据库连接串
+- `DATABASE_URL`：必填，数据库连接串。compose 启动时使用 `postgresql://postgres:postgres@paradedb:5432/bbs_wiki` 自动连接 ParadeDB 容器
 - `AUTH_SECRET`：建议填写，NextAuth 使用
 - `NEXTAUTH_URL`：建议按实际访问地址填写
 - `REGISTRATION_CODE`：注册码，留空或删除则关闭注册校验
-- `IMAGE_NAME`、`IMAGE_TAG`：用于 compose 和推送脚本复用
+- `DB_USER`、`DB_PASSWORD`、`DB_NAME`、`DB_PORT`：ParadeDB 数据库配置，需与 `DATABASE_URL` 对应
+- `IMAGE_NAME`、`IMAGE_TAG`、`CONTAINER_NAME`：用于 compose 和推送脚本复用
+- ParadeDB 容器首次启动会自动创建数据库和用户，数据持久化在 Docker volume 中
 - 容器启动时会自动执行 `pnpm prisma db push`，用于自动创建/同步表结构
 - 容器启动时会自动执行 `pnpm db:seed`，用于初始化默认管理员
-- 该方案不会自动创建数据库本身，`DATABASE_URL` 中的数据库名必须已存在
 
 ## 方式一：直接打包 Docker 镜像
 
@@ -115,9 +121,11 @@ docker compose logs -f
 
 说明：
 
-- 当前为方案 A：保留外部 PostgreSQL
-- 容器启动时会先执行 `prisma db push`、`db:seed`，再启动 Next.js
-- 如果数据库 `bbs_wiki` 不存在，容器仍会启动失败，需要先手工创建数据库
+- 当前方案使用 ParadeDB（PostgreSQL 兼容，内置 pgvector 和全文搜索增强）
+- 数据库作为 compose 服务自动启动，无需预先准备外部数据库
+- ParadeDB 容器首次启动会自动创建数据库和用户
+- 数据库数据持久化在 Docker volume `paradedb_data` 中
+- 容器启动时会先等 ParadeDB 就绪（healthcheck），再执行 `prisma db push`、`db:seed`，最后启动 Next.js
 - 默认管理员会自动初始化：
   - 邮箱：`admin@bbs-wiki.com`
   - 密码：`admin123`

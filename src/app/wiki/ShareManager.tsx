@@ -156,6 +156,8 @@ export function ShareManager({
   const [deletingShareId, setDeletingShareId] = useState<string | null>(null);
   const [editingExpiryId, setEditingExpiryId] = useState<string | null>(null);
   const [updatingExpiryId, setUpdatingExpiryId] = useState<string | null>(null);
+  const [copiedShareId, setCopiedShareId] = useState<string | null>(null);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const expiryDropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -243,9 +245,12 @@ export function ShareManager({
     }
   }
 
-  async function handleCopyShareLink(shareUrl: string) {
+  async function handleCopyShareLink(shareId: string, shareUrl: string) {
     try {
       await copyShareUrl(normalizeShareUrl(shareUrl));
+      setCopiedShareId(shareId);
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopiedShareId(null), 2000);
     } catch {
       window.alert("复制失败，请手动复制链接。");
     }
@@ -444,10 +449,18 @@ export function ShareManager({
                         </a>
                         <button
                           type="button"
-                          onClick={() => handleCopyShareLink(share.shareUrl)}
-                          className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => handleCopyShareLink(share.id, share.shareUrl)}
+                          className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                            copiedShareId === share.id
+                              ? "border-green-200 bg-green-50 text-green-700"
+                              : "border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+                          }`}
                         >
-                          复制链接
+                          {copiedShareId === share.id ? (
+                            <>✓ 已复制链接</>
+                          ) : (
+                            "复制链接"
+                          )}
                         </button>
                         <div
                           ref={editingExpiryId === share.id ? expiryDropdownRef : null}
