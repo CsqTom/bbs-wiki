@@ -1,8 +1,8 @@
 import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { join, resolve } from "path";
 import { v4 as uuidv4 } from "uuid";
 
-const UPLOAD_BASE = join(process.cwd(), "public", "uploads");
+export const UPLOAD_BASE = resolve(process.cwd(), "public", "uploads");
 
 async function persistUploadedFile(
   userId: string,
