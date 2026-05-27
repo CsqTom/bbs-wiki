@@ -70,6 +70,7 @@ CONTAINER_NAME=bbs-wiki
 - ParadeDB 容器首次启动会自动创建数据库和用户，数据持久化在 Docker volume 中
 - 容器启动时会自动执行 `pnpm prisma db push`，用于自动创建/同步表结构
 - 容器启动时会自动执行 `pnpm db:seed`，用于初始化默认管理员
+- 如果本地开发数据库较旧，拉取最新代码后也建议先手动执行一次 `pnpm db:push`
 
 ## 方式一：直接打包 Docker 镜像
 
@@ -130,6 +131,7 @@ docker compose logs -f
 - 数据库数据持久化在 Docker volume `paradedb_data` 中
 - 用户上传的头像与 Wiki 图片会持久化在 Docker volume `bbs_wiki_uploads` 中，对应容器目录 `/app/public/uploads`
 - 容器启动时会先等 ParadeDB 就绪（healthcheck），再执行 `prisma db push`、`db:seed`，最后启动 Next.js
+- 如果升级后进入后台提示缺少 `SystemConfig` 等新表，请先执行 `pnpm db:push` 同步表结构
 - 默认管理员会自动初始化：
   - 邮箱：`admin@bbs-wiki.com`
   - 密码：`admin123`

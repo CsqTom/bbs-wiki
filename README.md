@@ -21,6 +21,7 @@
 ```
   pnpm dev              # 开发模式
   pnpm build            # 生产构建
+  pnpm db:push          # 同步最新数据库表结构
   pnpm db:seed          # 初始化数据（管理员账号）
 
   默认管理员账号：admin@bbs-wiki.com / admin123
@@ -28,6 +29,16 @@
 
   图像存储：用户头像存在 public/uploads/avatars/{userId}/，Wiki图片存在 public/uploads/wiki/{userId}/。
 ```
+
+数据库升级说明
+```
+  pnpm db:push
+```
+
+说明：
+- 当本地数据库较旧，缺少新表或新字段时，先执行 `pnpm db:push`
+- 例如新增 AI 配置功能后，会依赖 `SystemConfig` 表；若未同步表结构，管理页会提示数据库版本过旧
+- 建议在拉取最新代码后先执行一次 `pnpm db:push`，再继续开发或测试
 
 部署相关
 ```

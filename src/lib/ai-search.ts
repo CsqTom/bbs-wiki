@@ -15,6 +15,7 @@ export interface SearchUserContext {
 }
 
 const SNIPPET_MAX_LEN = 2000;
+const LOG_QUERY_MAX_LEN = 80;
 
 function getRowString(row: Record<string, unknown>, key: string): string {
   const value = row[key];
@@ -25,6 +26,19 @@ function trimSnippet(text: string): string {
   return text.length > SNIPPET_MAX_LEN
     ? text.slice(0, SNIPPET_MAX_LEN) + "..."
     : text;
+}
+
+function trimLogQuery(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return normalized.length > LOG_QUERY_MAX_LEN
+    ? normalized.slice(0, LOG_QUERY_MAX_LEN) + "..."
+    : normalized;
+}
+
+function buildSearchLogContext(user: SearchUserContext, query: string, limit: number): string {
+  const role = user.role || "ANONYMOUS";
+  const userId = user.id || "anonymous";
+  return `user=${userId} role=${role} limit=${limit} query="${trimLogQuery(query)}"`;
 }
 
 function dedupeSearchResults(results: SearchResult[]): SearchResult[] {
@@ -577,6 +591,9 @@ export async function searchAllContent(
 ): Promise<SearchResult[]> {
   const limit = options?.limit ?? 10;
   const engine = await detectEngine();
+  const logContext = buildSearchLogContext(user, query, limit);
+
+  console.log(`[ai-search] search start engine=${engine} ${logContext}`);
 
   if (engine === "bm25") {
     // 先查 Wiki，再查帖子正文，最后查帖子关联的源 Wiki。
@@ -588,10 +605,15 @@ export async function searchAllContent(
     const mergedBM25 = dedupeSearchResults([...wikiBM25, ...postBM25, ...linkedWikiBM25])
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
-    if (mergedBM25.length > 0) return mergedBM25;
+    console.log(
+      `[ai-search] BM25 search wiki=${wikiBM25.length} post=${postBM25.length} linked=${linkedWikiBM25.length} final=${mergedBM25.length} ${logContext}`,
+    );
+    if (mergedBM25.length > 0) {
+      return mergedBM25;
+    }
 
     // BM25 returned 0 — retry with ILIKE
-    console.log("[ai-search] BM25 returned 0, fallback to ILIKE");
+    console.log(`[ai-search] BM25 returned 0, fallback to ILIKE ${logContext}`);
   }
 
   const [wikiResults, postResults, linkedWikiResults] = await Promise.all([
@@ -603,6 +625,10 @@ export async function searchAllContent(
   const merged = dedupeSearchResults([...wikiResults, ...postResults, ...linkedWikiResults])
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
+
+  console.log(
+    `[ai-search] ILIKE search wiki=${wikiResults.length} post=${postResults.length} linked=${linkedWikiResults.length} final=${merged.length} ${logContext}`,
+  );
 
   return merged;
 }
