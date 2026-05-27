@@ -28,3 +28,15 @@
 
   图像存储：用户头像存在 public/uploads/avatars/{userId}/，Wiki图片存在 public/uploads/wiki/{userId}/。
 ```
+
+部署相关
+```
+  cd deploy
+  bash build_push_private_registry.sh
+```
+
+说明：
+- `build_push_private_registry.sh` 会先读取 `deploy/.env` 中的 `IMAGE_NAME`、`IMAGE_TAG` 等镜像配置
+- 脚本会自动执行 `docker build -f deploy/Dockerfile -t ${IMAGE_NAME}:${IMAGE_TAG} .`
+- build 成功后会继续执行登录、打标签与推送
+- 更完整的部署说明见 `deploy/README.md`

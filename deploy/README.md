@@ -8,7 +8,7 @@
 
 - `Dockerfile`：用于构建 `bbs-wiki` 应用镜像
 - `docker-compose.yaml`：用于本地或服务器启动容器
-- `push_private_registry.sh`：用于将本地镜像推送到私有仓库
+- `build_push_private_registry.sh`：用于构建本地镜像并推送到私有仓库
 
 ## 前置要求
 
@@ -65,7 +65,8 @@ CONTAINER_NAME=bbs-wiki
 - `NEXTAUTH_URL`：建议按实际访问地址填写
 - `REGISTRATION_CODE`：注册码，留空或删除则关闭注册校验
 - `DB_USER`、`DB_PASSWORD`、`DB_NAME`、`DB_PORT`：ParadeDB 数据库配置，需与 `DATABASE_URL` 对应
-- `IMAGE_NAME`、`IMAGE_TAG`、`CONTAINER_NAME`：用于 compose 和推送脚本复用
+- `IMAGE_NAME`、`IMAGE_TAG`、`CONTAINER_NAME`：用于 compose 与构建推送脚本复用
+- `REGISTRY_HOST` 或 `REGISTRY_INPUT`：可选，私有仓地址，供构建推送脚本默认读取
 - ParadeDB 容器首次启动会自动创建数据库和用户，数据持久化在 Docker volume 中
 - 容器启动时会自动执行 `pnpm prisma db push`，用于自动创建/同步表结构
 - 容器启动时会自动执行 `pnpm db:seed`，用于初始化默认管理员
@@ -91,6 +92,8 @@ docker build --no-cache -f deploy/Dockerfile -t bbs-wiki:v2026.5.23 .
 ```bash
 docker images | grep bbs-wiki
 ```
+
+也可以直接使用下面的脚本自动完成“构建 + 推送”。
 
 ## 方式二：使用 docker compose 拉取并启动
 
@@ -125,6 +128,7 @@ docker compose logs -f
 - 数据库作为 compose 服务自动启动，无需预先准备外部数据库
 - ParadeDB 容器首次启动会自动创建数据库和用户
 - 数据库数据持久化在 Docker volume `paradedb_data` 中
+- 用户上传的头像与 Wiki 图片会持久化在 Docker volume `bbs_wiki_uploads` 中，对应容器目录 `/app/public/uploads`
 - 容器启动时会先等 ParadeDB 就绪（healthcheck），再执行 `prisma db push`、`db:seed`，最后启动 Next.js
 - 默认管理员会自动初始化：
   - 邮箱：`admin@bbs-wiki.com`
@@ -144,36 +148,56 @@ docker compose down
 docker compose pull
 ```
 
-## 推送到私有仓库
+如果需要连同上传文件一起清理，请谨慎执行：
 
-`push_private_registry.sh` 会读取当前目录下的 `.env`，并复用其中的：
+```bash
+docker compose down -v
+```
+
+说明：
+- `docker compose down` 不会删除 `paradedb_data` 和 `bbs_wiki_uploads`
+- `docker compose down -v` 会同时删除数据库数据和上传文件数据
+
+## 构建并推送到私有仓库
+
+`build_push_private_registry.sh` 会读取当前目录下的 `.env`，并复用其中的：
 
 - `IMAGE_NAME`
 - `IMAGE_TAG`
+- `REMOTE_IMAGE_NAME`（可选）
+- `REGISTRY_HOST` 或 `REGISTRY_INPUT`（可选）
+
+脚本内部会先在项目根目录执行：
+
+```bash
+docker build -f deploy/Dockerfile -t ${IMAGE_NAME}:${IMAGE_TAG} .
+```
+
+构建成功后，再自动完成 `docker login`、`docker tag`、`docker push`。
 
 进入部署目录后执行：
 
 ```bash
 cd deploy
-bash push_private_registry.sh
+bash build_push_private_registry.sh
 ```
 
 指定镜像标签：
 
 ```bash
-bash push_private_registry.sh -t v1.0.0
+bash build_push_private_registry.sh -t v1.0.0
 ```
 
 指定远程仓库镜像名：
 
 ```bash
-bash push_private_registry.sh --remote-name team/bbs-wiki -t v1.0.0
+bash build_push_private_registry.sh --remote-name team/bbs-wiki -t v1.0.0
 ```
 
 指定私有仓地址：
 
 ```bash
-bash push_private_registry.sh -r http://192.168.0.65:50083 -t v1.0.0
+bash build_push_private_registry.sh -r http://192.168.0.65:50083 -t v1.0.0
 ```
 
 ## HTTP 私有仓说明
@@ -218,5 +242,5 @@ docker compose up -d
 
 ```bash
 cd deploy
-bash push_private_registry.sh
+bash build_push_private_registry.sh
 ```

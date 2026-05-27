@@ -34,6 +34,9 @@ services:
       NODE_ENV: production
       PORT: 50030
       HOSTNAME: 0.0.0.0
+    volumes:
+      - bbs_wiki_uploads:/app/public/uploads
 
 volumes:
   paradedb_data:
+  bbs_wiki_uploads:
