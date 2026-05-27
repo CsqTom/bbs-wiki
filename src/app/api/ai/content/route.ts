@@ -44,6 +44,13 @@ export async function GET(request: Request) {
       where: { id },
       include: {
         board: { select: { id: true, name: true, isPublic: true } },
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+        comments: {
+          include: {
+            user: { select: { id: true, name: true, email: true, avatar: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
     if (!post) {
@@ -65,7 +72,15 @@ export async function GET(request: Request) {
       title: post.title,
       content: post.content,
       boardName: post.board.name,
+      createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
+      user: post.user,
+      comments: post.comments.map((comment) => ({
+        id: comment.id,
+        content: comment.content,
+        createdAt: comment.createdAt.toISOString(),
+        user: comment.user,
+      })),
     });
   }
 

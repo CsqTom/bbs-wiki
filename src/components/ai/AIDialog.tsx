@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const RECENT_QUESTIONS_KEY = "bbs-wiki.ai.recent-questions";
+const RECENT_QUESTIONS_LIMIT = 5;
+
 interface Source {
   id: string;
   title: string;
@@ -20,23 +23,84 @@ type AskState =
   | { status: "success"; data: AiResponse }
   | { status: "error"; message: string };
 
+function readRecentQuestions(): string[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(RECENT_QUESTIONS_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, RECENT_QUESTIONS_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentQuestions(questions: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    RECENT_QUESTIONS_KEY,
+    JSON.stringify(questions.slice(0, RECENT_QUESTIONS_LIMIT)),
+  );
+}
+
+function pushRecentQuestion(question: string, current: string[]) {
+  const normalizedQuestion = question.trim();
+  if (!normalizedQuestion) {
+    return current;
+  }
+
+  return [
+    normalizedQuestion,
+    ...current.filter((item) => item !== normalizedQuestion),
+  ].slice(0, RECENT_QUESTIONS_LIMIT);
+}
+
+function removeRecentQuestion(question: string, current: string[]) {
+  return current.filter((item) => item !== question);
+}
+
 export function AIDialog({
   open,
   onClose,
   onOpenSource,
+  hasOpenSource,
 }: {
   open: boolean;
   onClose: () => void;
-  onOpenSource: (id: string, title: string, type: "wiki" | "post") => void;
+  onOpenSource: (
+    id: string,
+    title: string,
+    type: "wiki" | "post",
+    url: string,
+  ) => void;
+  hasOpenSource: boolean;
 }) {
   const [question, setQuestion] = useState("");
   const [state, setState] = useState<AskState>({ status: "idle" });
+  const [recentQuestions, setRecentQuestions] = useState<string[]>(
+    () => readRecentQuestions(),
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
-      setState({ status: "idle" });
-      setQuestion("");
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
@@ -45,6 +109,9 @@ export function AIDialog({
     const q = question.trim();
     if (!q) return;
 
+    const nextRecentQuestions = pushRecentQuestion(q, recentQuestions);
+    setRecentQuestions(nextRecentQuestions);
+    saveRecentQuestions(nextRecentQuestions);
     setState({ status: "loading" });
 
     try {
@@ -77,18 +144,28 @@ export function AIDialog({
     }
   }
 
+  function handleDeleteRecentQuestion(item: string) {
+    const nextRecentQuestions = removeRecentQuestion(item, recentQuestions);
+    setRecentQuestions(nextRecentQuestions);
+    saveRecentQuestions(nextRecentQuestions);
+
+    if (question.trim() === item) {
+      setQuestion("");
+    }
+  }
+
   if (!open) return null;
 
   return (
     /* Overlay */
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[10vh]"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[10vh] md:items-center md:pt-0">
       {/* Dialog */}
       <div
-        className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        className={`mx-4 w-full rounded-2xl border border-gray-200 bg-white shadow-2xl transition-all duration-300 md:mx-6 ${
+          hasOpenSource
+            ? "md:mr-[calc(61.8vw+1.5rem)] md:max-w-[calc(38.2vw-3rem)]"
+            : "max-w-2xl"
+        }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
@@ -131,6 +208,56 @@ export function AIDialog({
             </button>
           </div>
 
+          {recentQuestions.length > 0 && (
+            <div className="mt-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  最近提问
+                </h4>
+                <span className="text-xs text-gray-400">
+                  提问保留 {RECENT_QUESTIONS_LIMIT} 条
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {recentQuestions.map((item) => (
+                  <div
+                    key={item}
+                    className="group relative flex max-w-full items-center rounded-full border border-gray-200 bg-gray-50 pr-7 transition hover:border-blue-200 hover:bg-blue-50"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuestion(item);
+                        inputRef.current?.focus();
+                      }}
+                      disabled={state.status === "loading"}
+                      className="truncate rounded-full px-3 py-1.5 text-sm text-gray-600 transition group-hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {item}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`删除提问：${item}`}
+                      onClick={() => handleDeleteRecentQuestion(item)}
+                      disabled={state.status === "loading"}
+                      className="absolute right-1 top-1/2 inline-flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-200 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <svg
+                        className="h-3 w-3"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M3 3l6 6M9 3L3 9" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Result */}
           <div className="mt-4 min-h-0">
             {state.status === "loading" && (
@@ -166,7 +293,14 @@ export function AIDialog({
                         <button
                           key={`${source.type}-${source.id}`}
                           type="button"
-                          onClick={() => onOpenSource(source.id, source.title, source.type)}
+                          onClick={() =>
+                            onOpenSource(
+                              source.id,
+                              source.title,
+                              source.type,
+                              source.url,
+                            )
+                          }
                           className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-left text-sm transition hover:bg-blue-50 hover:border-blue-200"
                         >
                           <span

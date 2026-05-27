@@ -9,11 +9,88 @@ export interface SearchResult {
   score: number;
 }
 
+export interface SearchUserContext {
+  id?: string;
+  role?: string;
+}
+
 const SNIPPET_MAX_LEN = 2000;
 
 function getRowString(row: Record<string, unknown>, key: string): string {
   const value = row[key];
   return typeof value === "string" ? value : value == null ? "" : String(value);
+}
+
+function trimSnippet(text: string): string {
+  return text.length > SNIPPET_MAX_LEN
+    ? text.slice(0, SNIPPET_MAX_LEN) + "..."
+    : text;
+}
+
+function dedupeSearchResults(results: SearchResult[]): SearchResult[] {
+  const uniqueResults = new Map<string, SearchResult>();
+
+  for (const result of results) {
+    const key = `${result.type}:${result.id}`;
+    const existing = uniqueResults.get(key);
+    if (!existing) {
+      uniqueResults.set(key, result);
+      continue;
+    }
+
+    // 保留更高分的结果；若分数相同，则优先保留上下文更完整的片段。
+    if (
+      result.score > existing.score ||
+      (result.score === existing.score && result.snippet.length > existing.snippet.length)
+    ) {
+      uniqueResults.set(key, result);
+    }
+  }
+
+  return [...uniqueResults.values()];
+}
+
+function buildLinkedWikiSnippet(
+  wikiTitle: string,
+  wikiContent: string,
+  postContent: string,
+): string {
+  const sections: string[] = [];
+  if (wikiTitle) {
+    sections.push(`关联Wiki：${wikiTitle}`);
+  }
+  if (wikiContent) {
+    sections.push(trimSnippet(wikiContent));
+  } else if (postContent) {
+    sections.push(trimSnippet(postContent));
+  }
+  return sections.join("\n");
+}
+
+async function getAccessibleBoardIds(user: SearchUserContext): Promise<string[]> {
+  // 管理员在 AI 问答中可检索所有版块内容。
+  if (user.role === "ADMIN") {
+    const allBoards = await prisma.board.findMany({
+      select: { id: true },
+    });
+    return allBoards.map((board) => board.id);
+  }
+
+  const publicBoards = await prisma.board.findMany({
+    where: { isPublic: true },
+    select: { id: true },
+  });
+  const accessibleBoardIds = new Set(publicBoards.map((b) => b.id));
+  if (user.id) {
+    const permittedBoards = await prisma.boardPermission.findMany({
+      where: { userId: user.id },
+      select: { boardId: true },
+    });
+    for (const permission of permittedBoards) {
+      accessibleBoardIds.add(permission.boardId);
+    }
+  }
+  return [...accessibleBoardIds];
 }
 
 // ── pg_search / BM25 detection + setup ──────────────────────────
@@ -208,27 +285,15 @@ async function searchWikiArticlesBM25(
 }
 
 async function searchForumPostsBM25(
-  userId: string | undefined,
+  user: SearchUserContext,
   query: string,
   limit: number,
 ): Promise<SearchResult[]> {
   const cleaned = sanitizeBm25Query(query);
   if (!cleaned) return [];
 
-  const publicBoards = await prisma.board.findMany({
-    where: { isPublic: true },
-    select: { id: true },
-  });
-  const accessibleBoardIds = new Set(publicBoards.map((b) => b.id));
-  if (userId) {
-    const permittedBoards = await prisma.boardPermission.findMany({
-      where: { userId },
-      select: { boardId: true },
-    });
-    for (const p of permittedBoards) accessibleBoardIds.add(p.boardId);
-  }
-  if (accessibleBoardIds.size === 0) return [];
-  const boardIds = [...accessibleBoardIds];
+  const boardIds = await getAccessibleBoardIds(user);
+  if (boardIds.length === 0) return [];
 
   const docs = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
     `SELECT "Post".id, "Post".title, "Post".content, b.id AS board_id, b.name AS board_name
@@ -250,10 +315,54 @@ async function searchForumPostsBM25(
     return {
       id,
       title,
-      snippet: content.length > SNIPPET_MAX_LEN ? content.slice(0, SNIPPET_MAX_LEN) + "..." : content,
+      snippet: trimSnippet(content),
       type: "post" as const,
       url: `/boards/${boardId || "unknown"}/posts/${id}`,
       score: docs.length - i,
+    };
+  });
+}
+
+async function searchForumLinkedWikiBM25(
+  user: SearchUserContext,
+  query: string,
+  limit: number,
+): Promise<SearchResult[]> {
+  const cleaned = sanitizeBm25Query(query);
+  if (!cleaned) return [];
+
+  const boardIds = await getAccessibleBoardIds(user);
+  if (boardIds.length === 0) return [];
+
+  const docs = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+    `SELECT p.id, p.title, p.content, p."boardId"::text AS board_id,
+            "WikiArticle".id AS wiki_id, "WikiArticle".title AS wiki_title, "WikiArticle".content AS wiki_content
+     FROM "Post" p
+     JOIN "WikiArticle" ON "WikiArticle".id = p."sourceId"
+     WHERE p."sourceType" = 'ARTICLE'
+       AND p."boardId"::text = ANY($1::text[])
+       AND "WikiArticle" @@@ $2
+     LIMIT $3`,
+    boardIds,
+    cleaned,
+    limit,
+  );
+
+  return docs.map((row, i: number) => {
+    const id = getRowString(row, "id");
+    const title = getRowString(row, "title");
+    const boardId = getRowString(row, "board_id");
+    const postContent = getRowString(row, "content");
+    const wikiTitle = getRowString(row, "wiki_title");
+    const wikiContent = getRowString(row, "wiki_content");
+    return {
+      id,
+      title: title || wikiTitle,
+      // 帖子命中后补充其源 Wiki 内容，让 AI 问答直接利用 Wiki 正文。
+      snippet: buildLinkedWikiSnippet(wikiTitle, wikiContent, postContent),
+      type: "post" as const,
+      url: `/boards/${boardId || "unknown"}/posts/${id}`,
+      score: docs.length - i + limit,
     };
   });
 }
@@ -355,27 +464,15 @@ async function searchWikiArticlesILIKE(
 }
 
 async function searchForumPostsILIKE(
-  userId: string | undefined,
+  user: SearchUserContext,
   query: string,
   limit: number,
 ): Promise<SearchResult[]> {
   const keywords = extractKeywords(query);
   if (keywords.length === 0) return [];
 
-  const publicBoards = await prisma.board.findMany({
-    where: { isPublic: true },
-    select: { id: true },
-  });
-  const accessibleBoardIds = new Set(publicBoards.map((b) => b.id));
-  if (userId) {
-    const permittedBoards = await prisma.boardPermission.findMany({
-      where: { userId },
-      select: { boardId: true },
-    });
-    for (const p of permittedBoards) accessibleBoardIds.add(p.boardId);
-  }
-  if (accessibleBoardIds.size === 0) return [];
-  const boardIds = [...accessibleBoardIds];
+  const boardIds = await getAccessibleBoardIds(user);
+  if (boardIds.length === 0) return [];
 
   const kw = buildILIKEConditions(keywords, 3);
   const keywordConditions = kw.conditions.join(" OR ");
@@ -404,7 +501,66 @@ async function searchForumPostsILIKE(
     return {
       id,
       title,
-      snippet: content.length > SNIPPET_MAX_LEN ? content.slice(0, SNIPPET_MAX_LEN) + "..." : content,
+      snippet: trimSnippet(content),
+      type: "post" as const,
+      url: `/boards/${boardId || "unknown"}/posts/${id}`,
+      score,
+    };
+  });
+}
+
+async function searchForumLinkedWikiILIKE(
+  user: SearchUserContext,
+  query: string,
+  limit: number,
+): Promise<SearchResult[]> {
+  const keywords = extractKeywords(query);
+  if (keywords.length === 0) return [];
+
+  const boardIds = await getAccessibleBoardIds(user);
+  if (boardIds.length === 0) return [];
+
+  const keywordConditions = keywords
+    .map(
+      (_keyword, i) =>
+        `("WikiArticle".title ILIKE $${3 + i} OR "WikiArticle".content ILIKE $${3 + i})`,
+    )
+    .join(" OR ");
+  const scoreExpr = keywords
+    .map(
+      (_keyword, i) =>
+        `(CASE WHEN "WikiArticle".title ILIKE $${3 + i} THEN 3 ELSE 0 END) + ` +
+        `(CASE WHEN "WikiArticle".content ILIKE $${3 + i} THEN 1 ELSE 0 END)`,
+    )
+    .join(" + ");
+  const params: unknown[] = [boardIds, limit, ...keywords.map((keyword) => `%${keyword}%`)];
+
+  const docs = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+    `SELECT p.id, p.title, p.content, p."boardId"::text AS board_id,
+            "WikiArticle".id AS wiki_id, "WikiArticle".title AS wiki_title, "WikiArticle".content AS wiki_content,
+            (${scoreExpr}) AS score
+     FROM "Post" p
+     JOIN "WikiArticle" ON "WikiArticle".id = p."sourceId"
+     WHERE p."sourceType" = 'ARTICLE'
+       AND p."boardId"::text = ANY($1)
+       AND (${keywordConditions})
+     ORDER BY score DESC
+     LIMIT $2`,
+    ...params,
+  );
+
+  return docs.map((row) => {
+    const id = getRowString(row, "id");
+    const title = getRowString(row, "title");
+    const boardId = getRowString(row, "board_id");
+    const postContent = getRowString(row, "content");
+    const wikiTitle = getRowString(row, "wiki_title");
+    const wikiContent = getRowString(row, "wiki_content");
+    const score = (Number(row.score) || 0) + 10;
+    return {
+      id,
+      title: title || wikiTitle,
+      snippet: buildLinkedWikiSnippet(wikiTitle, wikiContent, postContent),
       type: "post" as const,
       url: `/boards/${boardId || "unknown"}/posts/${id}`,
       score,
@@ -415,7 +571,7 @@ async function searchForumPostsILIKE(
 // ── Public API ───────────────────────────────────────────────────
 
 export async function searchAllContent(
-  userId: string | undefined,
+  user: SearchUserContext,
   query: string,
   options?: { limit?: number },
 ): Promise<SearchResult[]> {
@@ -423,12 +579,13 @@ export async function searchAllContent(
   const engine = await detectEngine();
 
   if (engine === "bm25") {
-    // Try BM25 first. If no results, fall back to ILIKE.
-    const [wikiBM25, postBM25] = await Promise.all([
-      searchWikiArticlesBM25(userId || "", query, limit),
-      searchForumPostsBM25(userId, query, limit),
+    // 先查 Wiki，再查帖子正文，最后查帖子关联的源 Wiki。
+    const [wikiBM25, postBM25, linkedWikiBM25] = await Promise.all([
+      searchWikiArticlesBM25(user.id || "", query, limit),
+      searchForumPostsBM25(user, query, limit),
+      searchForumLinkedWikiBM25(user, query, limit),
     ]);
-    const mergedBM25 = [...wikiBM25, ...postBM25]
+    const mergedBM25 = dedupeSearchResults([...wikiBM25, ...postBM25, ...linkedWikiBM25])
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
     if (mergedBM25.length > 0) return mergedBM25;
@@ -437,12 +594,13 @@ export async function searchAllContent(
     console.log("[ai-search] BM25 returned 0, fallback to ILIKE");
   }
 
-  const [wikiResults, postResults] = await Promise.all([
-    searchWikiArticlesILIKE(userId || "", query, limit),
-    searchForumPostsILIKE(userId, query, limit),
+  const [wikiResults, postResults, linkedWikiResults] = await Promise.all([
+    searchWikiArticlesILIKE(user.id || "", query, limit),
+    searchForumPostsILIKE(user, query, limit),
+    searchForumLinkedWikiILIKE(user, query, limit),
   ]);
 
-  const merged = [...wikiResults, ...postResults]
+  const merged = dedupeSearchResults([...wikiResults, ...postResults, ...linkedWikiResults])
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 

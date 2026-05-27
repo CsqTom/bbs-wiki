@@ -15,7 +15,10 @@ export async function POST(request: Request) {
   }
 
   // 1. Search accessible content
-  const searchResults = await searchAllContent(user.id, question.trim(), {
+  const searchResults = await searchAllContent({
+    id: user.id,
+    role: user.role,
+  }, question.trim(), {
     limit: 8,
   });
 

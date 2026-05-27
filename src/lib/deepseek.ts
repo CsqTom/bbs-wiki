@@ -36,6 +36,17 @@ function buildUserMessage(question: string, results: SearchResult[]): string {
   return `用户问题：${question}\n\n相关搜索结果：\n\n${context || "（无相关搜索结果）"}`;
 }
 
+function dedupeSources(results: SearchResult[]): SearchResult[] {
+  const unique = new Map<string, SearchResult>();
+  for (const result of results) {
+    const key = `${result.type}:${result.id}`;
+    if (!unique.has(key)) {
+      unique.set(key, result);
+    }
+  }
+  return [...unique.values()];
+}
+
 export interface AiAnswer {
   answer: string;
   sources: Array<{
@@ -92,7 +103,7 @@ export async function askAi(
   const answer: string =
     data.choices?.[0]?.message?.content || "没有找到相关内容";
 
-  const sources: AiAnswer["sources"] = searchResults.map((r) => ({
+  const sources: AiAnswer["sources"] = dedupeSources(searchResults).map((r) => ({
     id: r.id,
     title: r.title,
     type: r.type,

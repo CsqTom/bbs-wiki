@@ -10,6 +10,7 @@ export function NavbarAIButton() {
     id: string;
     title: string;
     type: "wiki" | "post";
+    url: string;
   } | null>(null);
 
   return (
@@ -25,18 +26,27 @@ export function NavbarAIButton() {
         AI 问答
       </button>
 
-      <AIDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onOpenSource={(id, title, type) => {
-          setSheetSource({ id, title, type });
-        }}
-      />
+      {dialogOpen && (
+        <AIDialog
+          open={dialogOpen}
+          onClose={() => {
+            setDialogOpen(false);
+            setSheetSource(null);
+          }}
+          hasOpenSource={!!sheetSource}
+          onOpenSource={(id, title, type, url) => {
+            setSheetSource({ id, title, type, url });
+          }}
+        />
+      )}
 
-      <ContentSheet
-        source={sheetSource}
-        onClose={() => setSheetSource(null)}
-      />
+      {sheetSource && (
+        <ContentSheet
+          key={`${sheetSource.type}-${sheetSource.id}`}
+          source={sheetSource}
+          onClose={() => setSheetSource(null)}
+        />
+      )}
     </>
   );
 }
