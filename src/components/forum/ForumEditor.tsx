@@ -26,6 +26,7 @@ export function ForumEditor({
 }: ForumEditorProps) {
   const [internalContent, setInternalContent] = useState(initialContent);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const content = controlledContent ?? internalContent;
 
@@ -69,6 +70,7 @@ export function ForumEditor({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadError("");
     const formData = new FormData();
     formData.append("file", file);
     formData.append("type", "wiki");
@@ -78,14 +80,27 @@ export function ForumEditor({
         method: "POST",
         body: formData,
       });
-      if (res.ok) {
-        const { url } = await res.json();
-        insertText(`![图片](${url})`);
-      } else {
-        alert("上传失败");
+      const data = (await res.json().catch(() => null)) as
+        | { url?: string; error?: string }
+        | null;
+
+      if (!res.ok || !data?.url) {
+        const message =
+          data?.error ??
+          "图片上传失败，请检查容器内上传目录是否可写后重试。";
+        setUploadError(message);
+        alert(message);
+        return;
       }
+
+      insertText(`![图片](${data.url})`);
     } catch (error) {
-      alert("上传失败");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "图片上传失败，请稍后重试。";
+      setUploadError(message);
+      alert(message);
     } finally {
       e.target.value = "";
     }
@@ -182,6 +197,11 @@ export function ForumEditor({
           📖 Wiki链接
         </button>
       </div>
+      {uploadError ? (
+        <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {uploadError}
+        </div>
+      ) : null}
       <textarea
         ref={textareaRef}
         value={content}

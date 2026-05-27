@@ -14,6 +14,7 @@ export function ProfileClient({ user }: { user: User }) {
   const router = useRouter();
   const [avatar, setAvatar] = useState(user.avatar || "");
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -26,6 +27,7 @@ export function ProfileClient({ user }: { user: User }) {
     if (!file) return;
 
     setUploading(true);
+    setUploadError("");
     const formData = new FormData();
     formData.append("file", file);
     formData.append("type", "avatar");
@@ -36,17 +38,29 @@ export function ProfileClient({ user }: { user: User }) {
         body: formData,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setAvatar(data.url);
-        router.refresh();
-      } else {
-        alert("头像上传失败");
+      const data = (await res.json().catch(() => null)) as
+        | { url?: string; error?: string }
+        | null;
+
+      if (!res.ok || !data?.url) {
+        const message =
+          data?.error ??
+          "头像上传失败，请检查容器内上传目录是否可写后重试。";
+        setUploadError(message);
+        alert(message);
+        return;
       }
+
+      setAvatar(data.url);
+      router.refresh();
     } catch (err) {
-      alert("头像上传失败");
+      const message =
+        err instanceof Error ? err.message : "头像上传失败，请稍后重试。";
+      setUploadError(message);
+      alert(message);
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   }
 
@@ -112,6 +126,11 @@ export function ProfileClient({ user }: { user: User }) {
                 disabled={uploading}
               />
             </label>
+            {uploadError ? (
+              <div className="max-w-56 text-center text-sm text-red-600">
+                {uploadError}
+              </div>
+            ) : null}
           </div>
           <div className="space-y-4 flex-1 pt-2">
             <div>

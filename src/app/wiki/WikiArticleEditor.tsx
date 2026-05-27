@@ -49,6 +49,7 @@ export function WikiArticleEditor({
   const [isDragging, setIsDragging] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [isCollabDialogOpen, setIsCollabDialogOpen] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const confirm = useConfirm();
   const prompt = usePrompt();
 
@@ -211,20 +212,34 @@ export function WikiArticleEditor({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadError("");
     const formData = new FormData();
     formData.append("file", file);
     formData.append("type", "wiki");
 
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
-      if (res.ok) {
-        const { url } = await res.json();
-        insertText(`![图片](${url})`);
-      } else {
-        alert("上传图片失败");
+      const data = (await res.json().catch(() => null)) as
+        | { url?: string; error?: string }
+        | null;
+
+      if (!res.ok || !data?.url) {
+        const message =
+          data?.error ??
+          "图片上传失败，请检查容器内上传目录是否可写后重试。";
+        setUploadError(message);
+        window.alert(message);
+        return;
       }
-    } catch {
-      alert("上传图片失败");
+
+      insertText(`![图片](${data.url})`);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "图片上传失败，请稍后重试。";
+      setUploadError(message);
+      window.alert(message);
     } finally {
       // Reset so the same file can be re-selected
       e.target.value = "";
@@ -366,6 +381,11 @@ export function WikiArticleEditor({
               {content.length} chars
             </span>
           </div>
+          {uploadError && (
+            <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+              {uploadError}
+            </div>
+          )}
           <textarea
             ref={textareaRef}
             value={content}
