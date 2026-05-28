@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { useConfirm, usePrompt } from "@/components/ui/ConfirmDialog";
 import { PublishToForumDialog } from "./PublishToForumDialog";
 import { CollaboratorDialog } from "./CollaboratorDialog";
+import { HistoryImageDialog } from "./HistoryImageDialog";
 
 const MindMapViewer = lazy(() =>
   import("@/components/wiki/MindMapViewer").then((m) => ({
@@ -49,11 +50,21 @@ export function WikiArticleEditor({
   const [isDragging, setIsDragging] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [isCollabDialogOpen, setIsCollabDialogOpen] = useState(false);
+  const [isHistoryImageDialogOpen, setIsHistoryImageDialogOpen] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const confirm = useConfirm();
   const prompt = usePrompt();
 
   const hasUnsavedChanges = content !== savedContent;
+
+  function buildAbsoluteAssetUrl(url: string) {
+    if (typeof window === "undefined") return url;
+    try {
+      return new URL(url, window.location.origin).href;
+    } catch {
+      return url;
+    }
+  }
 
   useEffect(() => {
     if (!hasUnsavedChanges) return;
@@ -208,10 +219,7 @@ export function WikiArticleEditor({
     }, 0);
   }
 
-  async function handleUploadLocalImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  async function uploadImageFile(file: File) {
     setUploadError("");
     const formData = new FormData();
     formData.append("file", file);
@@ -229,10 +237,10 @@ export function WikiArticleEditor({
           "图片上传失败，请检查容器内上传目录是否可写后重试。";
         setUploadError(message);
         window.alert(message);
-        return;
+        return null;
       }
 
-      insertText(`![图片](${data.url})`);
+      return buildAbsoluteAssetUrl(data.url);
     } catch (error) {
       const message =
         error instanceof Error
@@ -240,9 +248,37 @@ export function WikiArticleEditor({
           : "图片上传失败，请稍后重试。";
       setUploadError(message);
       window.alert(message);
+      return null;
+    }
+  }
+
+  async function handleUploadLocalImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const imageUrl = await uploadImageFile(file);
+      if (imageUrl) {
+        insertText(`![图片](${imageUrl})`);
+      }
     } finally {
       // Reset so the same file can be re-selected
       e.target.value = "";
+    }
+  }
+
+  async function handlePasteImage(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = Array.from(e.clipboardData.items);
+    const imageItem = items.find((item) => item.type.startsWith("image/"));
+    if (!imageItem) return;
+
+    const file = imageItem.getAsFile();
+    if (!file) return;
+
+    e.preventDefault();
+    const imageUrl = await uploadImageFile(file);
+    if (imageUrl) {
+      insertText(`![图片](${imageUrl})`);
     }
   }
 
@@ -345,7 +381,7 @@ export function WikiArticleEditor({
                 <h2 className="text-sm font-semibold text-gray-900">
                   Markdown Editor
                 </h2>
-                <p className="text-xs text-gray-500">支持实时联动预览和思维导图</p>
+                <p className="text-xs text-gray-500">支持实时联动预览、思维导图与粘贴图片上传</p>
               </div>
               <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
                 <label className="flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-200">
@@ -366,6 +402,14 @@ export function WikiArticleEditor({
                 >
                   <span className="text-sm leading-none">🌐</span>
                   网络图片
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryImageDialogOpen(true)}
+                  className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-200"
+                >
+                  <span className="text-sm leading-none">🗂</span>
+                  历史图片
                 </button>
                 <button
                   type="button"
@@ -390,6 +434,7 @@ export function WikiArticleEditor({
             ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            onPaste={(e) => void handlePasteImage(e)}
             className="min-h-0 flex-1 resize-none border-0 bg-slate-950 px-4 py-4 font-mono text-sm leading-6 text-slate-100 focus:outline-none"
           />
         </section>
@@ -452,11 +497,12 @@ export function WikiArticleEditor({
                   remarkPlugins={[remarkGfm]}
                   wrapperElement={{ "data-color-mode": "light" }}
                   components={{
-                    a: ({ node: _node, ...props }) => (
+                    a: (props) => (
                       <a {...props} target="_blank" rel="noopener noreferrer" />
                     ),
-                    img: ({ node: _node, ...props }) => (
-                      <img {...props} referrerPolicy="no-referrer" />
+                    img: ({ alt = "", ...props }) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img {...props} alt={alt} referrerPolicy="no-referrer" />
                     ),
                   }}
                 />
@@ -496,6 +542,12 @@ export function WikiArticleEditor({
           onClose={() => setIsCollabDialogOpen(false)}
         />
       )}
+
+      <HistoryImageDialog
+        isOpen={isHistoryImageDialogOpen}
+        onClose={() => setIsHistoryImageDialogOpen(false)}
+        onSelect={(url) => insertText(`![图片](${buildAbsoluteAssetUrl(url)})`)}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, readdir, stat } from "fs/promises";
 import { join, resolve } from "path";
 import { v4 as uuidv4 } from "uuid";
 
@@ -42,4 +42,52 @@ export async function uploadWikiImage(
   file: File,
 ): Promise<string> {
   return persistUploadedFile(userId, "wiki", file);
+}
+
+export interface UploadedWikiImageItem {
+  name: string;
+  url: string;
+  updatedAt: string;
+}
+
+export async function listUploadedWikiImages(
+  userId: string,
+): Promise<UploadedWikiImageItem[]> {
+  const userDir = join(UPLOAD_BASE, "wiki", userId);
+
+  try {
+    const fileNames = await readdir(userDir);
+    const imageEntries = await Promise.all(
+      fileNames.map(async (fileName) => {
+        const filePath = join(userDir, fileName);
+        const fileStat = await stat(filePath);
+
+        if (!fileStat.isFile()) {
+          return null;
+        }
+
+        return {
+          name: fileName,
+          url: `/uploads/wiki/${userId}/${fileName}`,
+          updatedAt: fileStat.mtime.toISOString(),
+        };
+      }),
+    );
+
+    return imageEntries
+      .filter((item): item is UploadedWikiImageItem => Boolean(item))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      return [];
+    }
+
+    console.error("[upload] 读取 Wiki 历史图片失败", error);
+    throw new Error("读取历史图片失败，请稍后重试。");
+  }
 }
