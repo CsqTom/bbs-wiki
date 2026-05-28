@@ -7,6 +7,7 @@ export interface SearchResult {
   type: "wiki" | "post";
   url: string;
   score: number;
+  sourceWikiId?: string;
 }
 
 export interface SearchUserContext {
@@ -45,17 +46,27 @@ function dedupeSearchResults(results: SearchResult[]): SearchResult[] {
   const uniqueResults = new Map<string, SearchResult>();
 
   for (const result of results) {
-    const key = `${result.type}:${result.id}`;
+    // 同一真实 Wiki 既可能直接以 Wiki 命中，也可能通过论坛帖子命中。
+    // 这里统一按源 Wiki 去重，并优先保留帖子来源，避免重复上下文喂给大模型。
+    const key = result.sourceWikiId
+      ? `source-wiki:${result.sourceWikiId}`
+      : `${result.type}:${result.id}`;
     const existing = uniqueResults.get(key);
     if (!existing) {
       uniqueResults.set(key, result);
       continue;
     }
 
-    // 保留更高分的结果；若分数相同，则优先保留上下文更完整的片段。
+    const prefersPost = result.type === "post" && existing.type !== "post";
+    const prefersHigherScore = result.score > existing.score;
+    const prefersLongerSnippet =
+      result.score === existing.score && result.snippet.length > existing.snippet.length;
+
+    // 同一源 Wiki 冲突时，帖子来源优先；否则保留更高分或上下文更完整的结果。
     if (
-      result.score > existing.score ||
-      (result.score === existing.score && result.snippet.length > existing.snippet.length)
+      prefersPost ||
+      prefersHigherScore ||
+      prefersLongerSnippet
     ) {
       uniqueResults.set(key, result);
     }
@@ -294,6 +305,7 @@ async function searchWikiArticlesBM25(
       type: "wiki" as const,
       url: `/wiki/${id}`,
       score: docs.length - i,
+      sourceWikiId: id,
     };
   });
 }
@@ -369,6 +381,7 @@ async function searchForumLinkedWikiBM25(
     const postContent = getRowString(row, "content");
     const wikiTitle = getRowString(row, "wiki_title");
     const wikiContent = getRowString(row, "wiki_content");
+    const wikiId = getRowString(row, "wiki_id");
     return {
       id,
       title: title || wikiTitle,
@@ -377,6 +390,7 @@ async function searchForumLinkedWikiBM25(
       type: "post" as const,
       url: `/boards/${boardId || "unknown"}/posts/${id}`,
       score: docs.length - i + limit,
+      sourceWikiId: wikiId || undefined,
     };
   });
 }
@@ -473,6 +487,7 @@ async function searchWikiArticlesILIKE(
       type: "wiki" as const,
       url: `/wiki/${id}`,
       score,
+      sourceWikiId: id,
     };
   });
 }
@@ -570,6 +585,7 @@ async function searchForumLinkedWikiILIKE(
     const postContent = getRowString(row, "content");
     const wikiTitle = getRowString(row, "wiki_title");
     const wikiContent = getRowString(row, "wiki_content");
+    const wikiId = getRowString(row, "wiki_id");
     const score = (Number(row.score) || 0) + 10;
     return {
       id,
@@ -578,6 +594,7 @@ async function searchForumLinkedWikiILIKE(
       type: "post" as const,
       url: `/boards/${boardId || "unknown"}/posts/${id}`,
       score,
+      sourceWikiId: wikiId || undefined,
     };
   });
 }
