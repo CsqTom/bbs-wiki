@@ -66,20 +66,6 @@ export function WikiArticleEditor({
     }
   }
 
-  function encodeBase64Utf8(value: string) {
-    const bytes = new TextEncoder().encode(value);
-    let binary = "";
-    const chunkSize = 0x8000;
-
-    // 分块拼接二进制字符串，避免正文较长时触发参数栈限制。
-    for (let index = 0; index < bytes.length; index += chunkSize) {
-      const chunk = bytes.subarray(index, index + chunkSize);
-      binary += String.fromCharCode(...chunk);
-    }
-
-    return window.btoa(binary);
-  }
-
   useEffect(() => {
     if (!hasUnsavedChanges) return;
 
@@ -181,25 +167,30 @@ export function WikiArticleEditor({
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      const formData = new FormData();
-      formData.append("transport", "base64-formdata-v1");
-      formData.append("contentBase64", encodeBase64Utf8(content));
-
-      const res = await fetch(`/api/wiki/${article.id}/content`, {
-        method: "POST",
-        body: formData,
+      const res = await fetch(`/api/wiki/${article.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-        if (res.status === 403) {
-          throw new Error(
-            data?.error ??
-              "保存请求被拦截或当前账号无编辑权限，请联系管理员检查安全策略。",
-          );
+        const responseText = await res.text().catch(() => "");
+        let errorMessage = "保存失败，请稍后重试";
+
+        try {
+          const data = JSON.parse(responseText) as { error?: string };
+          if (data?.error) {
+            errorMessage = data.error;
+          }
+        } catch {
+          // 非 JSON 响应通常来自网关、WAF 或反向代理，交给下面的状态码兜底。
         }
-        throw new Error(data?.error ?? "保存失败，请稍后重试");
+
+        if (res.status === 403) {
+          errorMessage =
+            "保存请求被服务器安全策略拦截，代码块中的命令内容触发 WAF。请尝试拆分命令、调整代码块内容，或联系管理员配置白名单。";
+        }
+
+        throw new Error(errorMessage);
       }
 
       setSavedContent(content);

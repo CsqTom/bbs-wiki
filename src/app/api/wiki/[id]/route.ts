@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
-import { updateEditableWikiArticle } from "@/lib/wiki-article";
 
 async function collectDirectoryIds(rootId: string, userId: string) {
   const directories = await prisma.wikiDirectory.findMany({
@@ -39,33 +38,32 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const user = await requireAuth();
-    const { id } = await params;
-    const { content, title } = await request.json();
+  const user = await requireAuth();
+  const { id } = await params;
+  const { content, title } = await request.json();
 
-    const result = await updateEditableWikiArticle(
-      { prisma },
-      id,
-      user.id,
-      { content, title },
-    );
-
-    if (!result.ok) {
-      return NextResponse.json(
-        { error: result.reason === "not_found" ? "Not found" : "Forbidden" },
-        { status: result.reason === "not_found" ? 404 : 403 },
-      );
-    }
-
-    return NextResponse.json(result.article);
-  } catch (error) {
-    console.error("[wiki] 更新文章失败", error);
-    return NextResponse.json(
-      { error: "更新失败，请稍后重试。" },
-      { status: 500 },
-    );
+  const article = await prisma.wikiArticle.findUnique({ where: { id } });
+  if (!article) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  const isOwner = article.userId === user.id;
+  const isCollaborator = !isOwner && await prisma.wikiCollaborator.findUnique({
+    where: { articleId_userId: { articleId: id, userId: user.id } },
+  });
+  if (!isOwner && !isCollaborator) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const updated = await prisma.wikiArticle.update({
+    where: { id },
+    data: {
+      ...(content !== undefined && { content }),
+      ...(title !== undefined && { title }),
+    },
+  });
+
+  return NextResponse.json(updated);
 }
 
 export async function DELETE(
